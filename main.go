@@ -510,12 +510,14 @@ func doCapture(
 	*/
 
 	var ethLayer layers.Ethernet
-	var ipLayer layers.IPv4
+	var IPv4Layer layers.IPv4
+	var IPv6Layer layers.IPv6
 
 	parser := gopacket.NewDecodingLayerParser(
 		layers.LayerTypeEthernet,
 		&ethLayer,
-		&ipLayer,
+		&IPv4Layer,
+		&IPv6Layer,
 	)
 
 	foundLayerTypes := []gopacket.LayerType{}
@@ -535,9 +537,16 @@ CAPTURE:
 				parser.DecodeLayers(packet.Data(), &foundLayerTypes)
 				if foundLayerType(layers.LayerTypeIPv4, foundLayerTypes) {
 					pd := newPacketData(packet)
-					channels[int(ipLayer.NetworkFlow().FastHash())&(config.numprocs-1)] <- pd
+					channels[int(IPv4Layer.NetworkFlow().FastHash())&(config.numprocs-1)] <- pd
 					if stats != nil {
 						stats.Incr("packets", 1)
+					}
+				}
+				if foundLayerType(layers.LayerTypeIPv6, foundLayerTypes) {
+					pd := newPacketData(packet)
+					channels[int(IPv6Layer.NetworkFlow().FastHash())&(config.numprocs-1)] <- pd
+					if stats != nil {
+						stats.Incr("packets_v6", 1)
 					}
 				}
 			} else {
