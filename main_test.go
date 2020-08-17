@@ -17,10 +17,6 @@ import (
 
 var stats *statsd.StatsdBuffer = nil
 
-/*
-Utility functions
-
-*/
 func getPacketData(which string) *gopacket.PacketSource {
 	var pcapFile string = "data/" + which + ".pcap"
 
@@ -84,11 +80,6 @@ func LogMirrorBg(source chan DNSLogEntry, target chan DNSLogEntry) {
 		}
 	}
 }
-
-/*
-Benchmarking functions
-
-*/
 
 func BenchmarkALogEntry(b *testing.B) {
 	var srcIP net.IP = net.ParseIP("1.1.1.1")
@@ -216,11 +207,6 @@ func BenchmarkHandleUDPPackets(b *testing.B) {
 	}
 
 }
-
-/*
-Tests
-
-*/
 
 func TestDefaultConfig(t *testing.T) {
 	os.Setenv("PDNS_DEV", "aaa")
@@ -581,6 +567,270 @@ func TestParseIPv6(t *testing.T) {
 		          if log.Client !=  {
 		              t.Fatal("")
 		          }*/
+
+		//parse the JSON and make sure it works
+		log.Encode()
+		if log.encoded == nil || log.err != nil {
+			t.Fatal("log marshaling error!")
+		}
+
+	case <-time.After(time.Second):
+		t.Fatal("No log messages were recieved")
+	}
+
+}
+
+func TestParseTXT(t *testing.T) {
+	gcAge, _ := time.ParseDuration("-1m")
+	gcInterval, _ := time.ParseDuration("3m")
+
+	var syslogPriority string = "DEBUG"
+	var packetChan = make(chan *packetData)
+	var logChan = make(chan DNSLogEntry)
+
+	//Consume load
+	var conntable = connectionTable{
+		connections: make(map[string]DNSMapEntry),
+	}
+	go handlePacket(&conntable, packetChan, logChan, syslogPriority, gcInterval, gcAge, 1, stats)
+
+	packetSource := getPacketData("txt")
+	packetSource.DecodeOptions.Lazy = true
+	for packet := range packetSource.Packets() {
+		packetChan <- newPacketData(packet)
+	}
+
+	select {
+	case log := <-logChan:
+
+		if len(logChan) > 0 {
+			//if we have more than 1 log message, we miss-parsed
+			t.Fatal("More than 1 log message was present in the channel\n")
+		}
+
+		//validate values of log struct
+		if log.QueryID != 30027 {
+			t.Fatalf("Bad Query ID %d, expecting %d\n", log.QueryID, 30027)
+		}
+
+		if log.ResponseCode != 0 {
+			t.Fatalf("Bad Response code %d, expecting 0\n", log.ResponseCode)
+		}
+
+		if log.Question != "gmail.com" {
+			t.Fatalf("Bad question %s, expecting gmail.com\n", log.Question)
+		}
+
+		if log.QuestionType != "TXT" {
+			t.Fatalf("Bad question type %s, expecting TXT\n", log.QuestionType)
+		}
+
+		if log.AnswerType != "TXT" {
+			t.Fatalf("Bad answer type %s, expecting TXT\n", log.AnswerType)
+		}
+
+		if log.TTL != 3600 {
+			t.Fatalf("Bad TTL %d, expecting 3600", log.TTL)
+		}
+
+		//parse the JSON and make sure it works
+		log.Encode()
+		if log.encoded == nil || log.err != nil {
+			t.Fatal("log marshaling error!")
+		}
+
+	case <-time.After(time.Second):
+		t.Fatal("No log messages were recieved")
+	}
+
+}
+
+func TestParseSOA(t *testing.T) {
+	gcAge, _ := time.ParseDuration("-1m")
+	gcInterval, _ := time.ParseDuration("3m")
+
+	var syslogPriority string = "DEBUG"
+	var packetChan = make(chan *packetData)
+	var logChan = make(chan DNSLogEntry)
+
+	//Consume load
+	var conntable = connectionTable{
+		connections: make(map[string]DNSMapEntry),
+	}
+	go handlePacket(&conntable, packetChan, logChan, syslogPriority, gcInterval, gcAge, 1, stats)
+
+	packetSource := getPacketData("soa")
+	packetSource.DecodeOptions.Lazy = true
+	for packet := range packetSource.Packets() {
+		packetChan <- newPacketData(packet)
+	}
+
+	select {
+	case log := <-logChan:
+
+		if len(logChan) > 0 {
+			//if we have more than 1 log message, we miss-parsed
+			t.Fatal("More than 1 log message was present in the channel\n")
+		}
+
+		//validate values of log struct
+		if log.QueryID != 29098 {
+			t.Fatalf("Bad Query ID %d, expecting %d\n", log.QueryID, 29098)
+		}
+
+		if log.ResponseCode != 0 {
+			t.Fatalf("Bad Response code %d, expecting 0\n", log.ResponseCode)
+		}
+
+		if log.Question != "google.com" {
+			t.Fatalf("Bad question %s, expecting google.com\n", log.Question)
+		}
+
+		if log.QuestionType != "SOA" {
+			t.Fatalf("Bad question type %s, expecting SOA\n", log.QuestionType)
+		}
+
+		if log.AnswerType != "SOA" {
+			t.Fatalf("Bad answer type %s, expecting SOA\n", log.AnswerType)
+		}
+
+		if log.TTL != 30 {
+			t.Fatalf("Bad TTL %d, expecting 30", log.TTL)
+		}
+
+		//parse the JSON and make sure it works
+		log.Encode()
+		if log.encoded == nil || log.err != nil {
+			t.Fatal("log marshaling error!")
+		}
+
+	case <-time.After(time.Second):
+		t.Fatal("No log messages were recieved")
+	}
+
+}
+
+func TestParseCNAME(t *testing.T) {
+	gcAge, _ := time.ParseDuration("-1m")
+	gcInterval, _ := time.ParseDuration("3m")
+
+	var syslogPriority string = "DEBUG"
+	var packetChan = make(chan *packetData)
+	var logChan = make(chan DNSLogEntry)
+
+	//Consume load
+	var conntable = connectionTable{
+		connections: make(map[string]DNSMapEntry),
+	}
+	go handlePacket(&conntable, packetChan, logChan, syslogPriority, gcInterval, gcAge, 1, stats)
+
+	packetSource := getPacketData("cname")
+	packetSource.DecodeOptions.Lazy = true
+	for packet := range packetSource.Packets() {
+		packetChan <- newPacketData(packet)
+	}
+
+	select {
+	case log := <-logChan:
+
+		if len(logChan) > 0 {
+			//if we have more than 1 log message, we miss-parsed
+			t.Fatal("More than 1 log message was present in the channel\n")
+		}
+
+		//validate values of log struct
+		if log.QueryID != 37059 {
+			t.Fatalf("Bad Query ID %d, expecting %d\n", log.QueryID, 37059)
+		}
+
+		if log.ResponseCode != 0 {
+			t.Fatalf("Bad Response code %d, expecting 0\n", log.ResponseCode)
+		}
+
+		if log.Question != "ipv6.google.com" {
+			t.Fatalf("Bad question %s, expecting ipv6.google.com\n", log.Question)
+		}
+
+		if log.QuestionType != "CNAME" {
+			t.Fatalf("Bad question type %s, expecting CNAME\n", log.QuestionType)
+		}
+
+		if log.AnswerType != "CNAME" {
+			t.Fatalf("Bad answer type %s, expecting CNAME\n", log.AnswerType)
+		}
+
+		if log.TTL != 86383 {
+			t.Fatalf("Bad TTL %d, expecting 86383", log.TTL)
+		}
+
+		//parse the JSON and make sure it works
+		log.Encode()
+		if log.encoded == nil || log.err != nil {
+			t.Fatal("log marshaling error!")
+		}
+
+	case <-time.After(time.Second):
+		t.Fatal("No log messages were recieved")
+	}
+
+}
+
+func TestParsePTR(t *testing.T) {
+	gcAge, _ := time.ParseDuration("-1m")
+	gcInterval, _ := time.ParseDuration("3m")
+
+	var syslogPriority string = "DEBUG"
+	var packetChan = make(chan *packetData)
+	var logChan = make(chan DNSLogEntry)
+
+	//Consume load
+	var conntable = connectionTable{
+		connections: make(map[string]DNSMapEntry),
+	}
+	go handlePacket(&conntable, packetChan, logChan, syslogPriority, gcInterval, gcAge, 1, stats)
+
+	packetSource := getPacketData("ptr")
+	packetSource.DecodeOptions.Lazy = true
+	for packet := range packetSource.Packets() {
+		packetChan <- newPacketData(packet)
+	}
+
+	select {
+	case log := <-logChan:
+
+		if len(logChan) > 0 {
+			//if we have more than 1 log message, we miss-parsed
+			t.Fatal("More than 1 log message was present in the channel\n")
+		}
+
+		//validate values of log struct
+		if log.QueryID != 29096 {
+			t.Fatalf("Bad Query ID %d, expecting %d\n", log.QueryID, 29096)
+		}
+
+		if log.ResponseCode != 0 {
+			t.Fatalf("Bad Response code %d, expecting 0\n", log.ResponseCode)
+		}
+
+		if log.Question != "1.1.1.1.in-addr.arpa" {
+			t.Fatalf("Bad question %s, expecting 1.1.1.1.in-addr.arpa\n", log.Question)
+		}
+
+		if log.QuestionType != "PTR" {
+			t.Fatalf("Bad question type %s, expecting A\n", log.QuestionType)
+		}
+
+		if log.Answer != "one.one.one.one" {
+			t.Fatalf("Bad answer %s, expecting one.one.one.one\n", log.Answer)
+		}
+
+		if log.AnswerType != "PTR" {
+			t.Fatalf("Bad answer type %s, expecting PTR\n", log.AnswerType)
+		}
+
+		if log.TTL != 1800 {
+			t.Fatalf("Bad TTL %d, expecting 1800", log.TTL)
+		}
 
 		//parse the JSON and make sure it works
 		log.Encode()

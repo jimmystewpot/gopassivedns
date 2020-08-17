@@ -7,7 +7,7 @@
 Network-based DNS logging in Go
 
 ## Summary
-A network-capture based DNS logger, inspired by https://github.com/gamelinux/passivedns.  It uses gopacket to deal with libpcap and packet processing.  It outputs JSON logs.  It is intended to deal with high volume query capture in environments with anywhewre from one to hundreds of DNS resolvers.
+A network-capture based DNS logger, inspired by https://github.com/gamelinux/passivedns.  It uses gopacket to deal with libpcap and packet processing.  It outputs JSON logs.  It is intended to deal with high volume query capture in environments with anywhewre from one to hundreds of DNS resolvers. This supports both ipv6 and ipv4 logging.
 
 ### Why not use PassiveDNS from gamelinux?
 It's a good choice.  I built this because I believe tasks like involving processing large amounts of untrusted data with lots of poorly documented corner cases should be handled by a managed runtime to prevent memory corruption-style attacks.  I have deployed PassiveDNS in several orgs, and I built gopassivedns to solve a few specific pain points I observed: I needed to insturment a lot of locations, a needed to scale the storage layer to handle a LOT of lookups and I wanted a test suite with good coverage around all the DNS edge cases.
