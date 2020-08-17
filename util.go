@@ -1,18 +1,18 @@
 package main
 
 import (
+	"strconv"
+
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
-	"strconv"
 )
 
-/*
-   The gopacket DNS layer doesn't have a lot of good String()
-   conversion methods, so we have to do a lot of that ourselves
-   here.  Much of this should move back into gopacket.  Also a
-   little worried about the perf impact of doing string conversions
-   in this thread...
-*/
+// TypeString returns the string for the layer returned type.
+// The gopacket DNS layer doesn't have a lot of good String()
+// conversion methods, so we have to do a lot of that ourselves
+// here.  Much of this should move back into gopacket.  Also a
+// little worried about the perf impact of doing string conversions
+// in this thread...
 func TypeString(dnsType layers.DNSType) string {
 	switch dnsType {
 	default:
@@ -41,14 +41,13 @@ func TypeString(dnsType layers.DNSType) string {
 	}
 }
 
-/*
-   The gopacket DNS layer doesn't have a lot of good String()
-   conversion methods, so we have to do a lot of that ourselves
-   here.  Much of this should move back into gopacket.  Also a
-   little worried about the perf impact of doing string conversions
-   in this thread...
-*/
-func RrString(rr layers.DNSResourceRecord) string {
+// RRString returns the string for the encoded type.
+// The gopacket DNS layer doesn't have a lot of good String()
+// conversion methods, so we have to do a lot of that ourselves
+// here.  Much of this should move back into gopacket.  Also a
+// little worried about the perf impact of doing string conversions
+// in this thread...
+func RRString(rr layers.DNSResourceRecord) string {
 	switch rr.Type {
 	default:
 		//take a blind stab...at least this shouldn't *lose* data

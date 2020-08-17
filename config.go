@@ -5,7 +5,7 @@ import (
 	"os"
 	"strconv"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 // codebeat:disable[TOO_MANY_IVARS]
@@ -122,9 +122,8 @@ func getEnvStr(name string, def string) string {
 	content, found := os.LookupEnv(name)
 	if found {
 		return content
-	} else {
-		return def
 	}
+	return def
 }
 
 func getEnvBool(name string, def bool) bool {
@@ -133,13 +132,11 @@ func getEnvBool(name string, def bool) bool {
 		parsed, err := strconv.ParseBool(content)
 		if err == nil {
 			return parsed
-		} else {
-			log.Debugf("Could not parse the content of %s, %s, as a bool", name, content)
-			return def
 		}
-	} else {
+		log.Debugf("Could not parse the content of %s, %s, as a bool", name, content)
 		return def
 	}
+	return def
 }
 
 func getEnvInt(name string, def int) int {
@@ -148,11 +145,9 @@ func getEnvInt(name string, def int) int {
 		parsed, err := strconv.ParseInt(content, 0, 32)
 		if err == nil {
 			return int(parsed)
-		} else {
-			log.Debugf("Could not parse the content of %s, %s, as an int", name, content)
-			return def
 		}
-	} else {
+		log.Debugf("Could not parse the content of %s, %s, as an int", name, content)
 		return def
 	}
+	return def
 }

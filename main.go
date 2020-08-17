@@ -19,51 +19,35 @@ import (
 	"github.com/google/gopacket/tcpassembly"
 	"github.com/google/gopacket/tcpassembly/tcpreader"
 	"github.com/quipo/statsd"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
-/*
-
-Structs and helper functions
-
-*/
-
-/*
-  struct for DNS connection table entry
-  the 'inserted' value is used in connection table cleanup
-*/
-type dnsMapEntry struct {
+// DNSMapEntry for DNS connection table entry
+// the 'inserted' value is used in connection table cleanup
+type DNSMapEntry struct {
 	entry    layers.DNS
 	inserted time.Time
 }
 
-/*
-  struct for DNS connection table
-*/
+// connectionTable stores the connection table
 type connectionTable struct {
-	connections map[string]dnsMapEntry
+	connections map[string]DNSMapEntry
 	sync.RWMutex
 }
 
-/*
-  struct to store reassembled TCP streams
-*/
-type tcpDataStruct struct {
-	DnsData []byte
-	IpLayer gopacket.Flow
+// TCPDataStruct struct to store reassembled TCP streams
+type TCPDataStruct struct {
+	DNSData []byte
+	IPLayer gopacket.Flow
 	Length  int
 }
 
-/*
-  global channel to recieve reassembled TCP streams
-  consumed in doCapture
-*/
-var reassembleChan chan tcpDataStruct
+//  global channel to recieve reassembled TCP streams
+//  consumed in doCapture
+var reassembleChan chan TCPDataStruct
 
-/*
-  TCP reassembly stuff, all the work is done in run()
-*/
-
+// TCP reassembly stuff, all the work is done in run()
+//
 type dnsStreamFactory struct{}
 
 type dnsStream struct {
@@ -71,9 +55,7 @@ type dnsStream struct {
 	r              tcpreader.ReaderStream
 }
 
-/*
-  create constant for the packetQueue as this is used in multiple places.
-*/
+//  create constant for the packetQueue as this is used in multiple places.
 const packetQueue int = 500
 
 func (d *dnsStreamFactory) New(net, transport gopacket.Flow) tcpassembly.Stream {
@@ -104,15 +86,15 @@ func (d *dnsStream) run() {
 				return
 			}
 			// Parse the actual integer
-			dns_data_len := int(binary.BigEndian.Uint16(data[:2]))
+			DNSdatalen := int(binary.BigEndian.Uint16(data[:2]))
 			// Ensure the length of data is the parsed size +2,
 			// skip to next iterator if too short
-			if len(data) < dns_data_len+2 {
+			if len(data) < DNSdatalen+2 {
 				return
 			}
-			reassembleChan <- tcpDataStruct{
-				DnsData: data[2 : dns_data_len+2],
-				IpLayer: d.net,
+			reassembleChan <- TCPDataStruct{
+				DNSData: data[2 : DNSdatalen+2],
+				IPLayer: d.net,
 				Length:  int(binary.BigEndian.Uint16(data[:2])),
 			}
 			return
@@ -126,10 +108,8 @@ func (d *dnsStream) run() {
 	}
 }
 
-/*
-	takes the src IP, dst IP, DNS question, DNS reply and the logs struct to populate.
-	returns nothing, but populates the logs array
-*/
+//	takes the src IP, dst IP, DNS question, DNS reply and the logs struct to populate.
+//	returns nothing, but populates the logs array
 func initLogEntry(
 	syslogPriority string,
 	srcIP net.IP,
@@ -140,7 +120,7 @@ func initLogEntry(
 	question layers.DNS,
 	reply layers.DNS,
 	inserted time.Time,
-	logs *[]dnsLogEntry) {
+	logs *[]DNSLogEntry) {
 
 	/*
 	   http://forums.devshed.com/dns-36/dns-packet-question-section-1-a-183026.html
@@ -160,67 +140,65 @@ func initLogEntry(
 	// a response code other than 0 means failure of some kind
 	if reply.ResponseCode != 0 {
 
-		*logs = append(*logs, dnsLogEntry{
-			Level:                syslogPriority,
-			Query_ID:             reply.ID,
-			Question:             string(question.Questions[0].Name),
-			Response_Code:        int(reply.ResponseCode),
-			Question_Type:        TypeString(question.Questions[0].Type),
-			Answer:               reply.ResponseCode.String(),
-			Answer_Type:          "",
-			TTL:                  0,
-			Authoritative_Answer: reply.AA,
-			Recursion_Desired:    question.RD,
-			Recursion_Available:  question.RA,
+		*logs = append(*logs, DNSLogEntry{
+			Level:               syslogPriority,
+			QueryID:             reply.ID,
+			Question:            string(question.Questions[0].Name),
+			ResponseCode:        int(reply.ResponseCode),
+			QuestionType:        TypeString(question.Questions[0].Type),
+			Answer:              reply.ResponseCode.String(),
+			AnswerType:          "",
+			TTL:                 0,
+			AuthoritativeAnswer: reply.AA,
+			RecursionDesired:    question.RD,
+			RecursionAvailable:  question.RA,
 
 			//this is the answer packet, which comes from the server...
 			Server: srcIP,
 			//...and goes to the client
-			Client:      dstIP,
-			Timestamp:   time.Now().UTC().String(),
-			Elapsed:     time.Now().Sub(inserted).Nanoseconds(),
-			Client_Port: srcPort,
-			Length:      *length,
-			Proto:       *protocol,
-			Truncated:   reply.TC,
+			Client:     dstIP,
+			Timestamp:  time.Now().UTC().String(),
+			Elapsed:    time.Now().Sub(inserted).Nanoseconds(),
+			ClientPort: srcPort,
+			Length:     *length,
+			Proto:      *protocol,
+			Truncated:  reply.TC,
 		})
 
 	} else {
 		for _, answer := range reply.Answers {
 
-			*logs = append(*logs, dnsLogEntry{
-				Query_ID:      reply.ID,
-				Question:      string(question.Questions[0].Name),
-				Response_Code: int(reply.ResponseCode),
-				Question_Type: TypeString(question.Questions[0].Type),
-				Answer:        RrString(answer),
-				Answer_Type:   TypeString(answer.Type),
-				TTL:           answer.TTL,
+			*logs = append(*logs, DNSLogEntry{
+				QueryID:      reply.ID,
+				Question:     string(question.Questions[0].Name),
+				ResponseCode: int(reply.ResponseCode),
+				QuestionType: TypeString(question.Questions[0].Type),
+				Answer:       RRString(answer),
+				AnswerType:   TypeString(answer.Type),
+				TTL:          answer.TTL,
 				//this is the answer packet, which comes from the server...
 				Server: srcIP,
 				//...and goes to the client
 				Client: dstIP,
 				//Timestamp:            time.Now().UTC().Format(time.RFC3339Nano),
-				Timestamp:            time.Now().UTC().String(),
-				Elapsed:              time.Now().Sub(inserted).Nanoseconds(),
-				Client_Port:          srcPort,
-				Level:                syslogPriority,
-				Authoritative_Answer: reply.AA,
-				Recursion_Desired:    question.RD,
-				Recursion_Available:  question.RA,
-				Length:               *length,
-				Proto:                *protocol,
-				Truncated:            reply.TC,
+				Timestamp:           time.Now().UTC().String(),
+				Elapsed:             time.Now().Sub(inserted).Nanoseconds(),
+				ClientPort:          srcPort,
+				Level:               syslogPriority,
+				AuthoritativeAnswer: reply.AA,
+				RecursionDesired:    question.RD,
+				RecursionAvailable:  question.RA,
+				Length:              *length,
+				Proto:               *protocol,
+				Truncated:           reply.TC,
 			})
 		}
 	}
 }
 
-/*
-	background task to clear out stale entries in the conntable
-	takes a pointer to the conntable to clean, the maximum age of an entry and how often to run GC
-*/
-func cleanDnsCache(
+//	background task to clear out stale entries in the conntable
+//	takes a pointer to the conntable to clean, the maximum age of an entry and how often to run GC
+func cleanDNSCache(
 	conntable *connectionTable,
 	maxAge time.Duration,
 	interval time.Duration,
@@ -249,10 +227,11 @@ func cleanDnsCache(
 	}
 }
 
-func handleDns(
+// handleDNS processses the DNS layer
+func handleDNS(
 	conntable *connectionTable,
 	dns *layers.DNS,
-	logC chan dnsLogEntry,
+	logC chan DNSLogEntry,
 	syslogPriority string,
 	srcIP net.IP,
 	srcPort string,
@@ -270,7 +249,7 @@ func handleDns(
 	//other checks should go here.
 
 	//pre-allocated for initLogEntry
-	logs := []dnsLogEntry{}
+	logs := []DNSLogEntry{}
 	// generate a more unique key for a conntable map to avoid hash key collisions as dns.ID is not very unique
 	var uid string
 	if dstPort == "53" {
@@ -309,7 +288,7 @@ func handleDns(
 	} else {
 		//This is the initial query.  save it for later.
 		log.Debug("Got a leg of query ID " + strconv.Itoa(int(dns.ID)))
-		mapEntry := dnsMapEntry{
+		mapEntry := DNSMapEntry{
 			entry:    *dns,
 			inserted: packetTime,
 		}
@@ -320,15 +299,14 @@ func handleDns(
 	}
 }
 
-/* validate if DNS packet, make conntable entry and output
-   to log channel if there is a match
-
-   we pass packet by value here because we turned on ZeroCopy for the capture, which reuses the capture buffer
-*/
+// validate if DNS packet, make conntable entry and output
+//   to log channel if there is a match
+//
+//   we pass packet by value here because we turned on ZeroCopy for the capture, which reuses the capture buffer
 func handlePacket(
 	conntable *connectionTable,
 	packets chan *packetData,
-	logC chan dnsLogEntry,
+	logC chan DNSLogEntry,
 	syslogPriority string,
 	gcInterval time.Duration,
 	gcAge time.Duration,
@@ -372,16 +350,16 @@ func handlePacket(
 				packetTime = time.Now()
 			}
 
-			//All TCP goes to reassemble.  This is first because a single packet DNS request will parse as DNS
-			//But that will leave the connection hanging around in memory, because the inital handshake won't
-			//parse as DNS, nor will the connection closing.
+			// All TCP goes to reassemble.  This is first because a single packet DNS request will parse as DNS
+			// But that will leave the connection hanging around in memory, because the inital handshake won't
+			// parse as DNS, nor will the connection closing.
 
 			if packet.IsTCPStream() {
 				//TODO Make them real
 				srcPort := "0"
 				dstPort := "0"
 
-				handleDns(conntable,
+				handleDNS(conntable,
 					packet.GetDNSLayer(),
 					logC,
 					syslogPriority,
@@ -402,7 +380,7 @@ func handlePacket(
 				// these are reversed because they are over the wire.
 				srcPort := strconv.Itoa(int(packet.udpLayer.DstPort))
 				dstPort := strconv.Itoa(int(packet.udpLayer.SrcPort))
-				handleDns(conntable,
+				handleDNS(conntable,
 					packet.GetDNSLayer(),
 					logC,
 					syslogPriority,
@@ -428,7 +406,7 @@ func handlePacket(
 	}
 }
 
-//setup a device or pcap file for capture, returns a handle
+// setup a device or pcap file for capture, returns a handle
 func initHandle(config *pdnsConfig) *pcap.Handle {
 
 	var handle *pcap.Handle
@@ -460,12 +438,12 @@ func initHandle(config *pdnsConfig) *pcap.Handle {
 	return handle
 }
 
-//kick off packet procesing threads and start the packet capture loop
+// kick off packet procesing threads and start the packet capture loop
 func doCapture(
 	handle *pcap.Handle,
-	logChan chan dnsLogEntry,
+	logChan chan DNSLogEntry,
 	config *pdnsConfig,
-	reChan chan tcpDataStruct,
+	reChan chan TCPDataStruct,
 	stats *statsd.StatsdBuffer,
 	done chan bool) {
 
@@ -487,17 +465,17 @@ func doCapture(
 	/* init channels for the packet handlers and kick off handler threads */
 	var channels []chan *packetData
 	for i := 0; i < config.numprocs; i++ {
-		log.Debug("Creating packet processing channel %d", i)
+		log.Debugf("Creating packet processing channel %d", i)
 		channels = append(channels, make(chan *packetData, packetQueue))
 	}
 
 	//DNS IDs are stored as uint16s by the gopacket DNS layer
 	var conntable = connectionTable{
-		connections: make(map[string]dnsMapEntry),
+		connections: make(map[string]DNSMapEntry),
 	}
 
 	//setup garbage collection for this map
-	go cleanDnsCache(&conntable, gcAgeDur, gcIntervalDur, stats)
+	go cleanDNSCache(&conntable, gcAgeDur, gcIntervalDur, stats)
 
 	for i := 0; i < config.numprocs; i++ {
 		log.Debugf("Starting packet processing thread %d", i)
@@ -537,9 +515,9 @@ func doCapture(
 CAPTURE:
 	for {
 		select {
-		case reassembledTcp := <-reChan:
-			pd := NewTcpData(reassembledTcp)
-			channels[int(reassembledTcp.IpLayer.FastHash())&(config.numprocs-1)] <- pd
+		case reassembledTCP := <-reChan:
+			pd := newTCPData(reassembledTCP)
+			channels[int(reassembledTCP.IPLayer.FastHash())&(config.numprocs-1)] <- pd
 			if stats != nil {
 				stats.Incr("reassembed_tcp", 1)
 			}
@@ -547,7 +525,7 @@ CAPTURE:
 			if packet != nil {
 				parser.DecodeLayers(packet.Data(), &foundLayerTypes)
 				if foundLayerType(layers.LayerTypeIPv4, foundLayerTypes) {
-					pd := NewPacketData(packet)
+					pd := newPacketData(packet)
 					channels[int(ipLayer.NetworkFlow().FastHash())&(config.numprocs-1)] <- pd
 					if stats != nil {
 						stats.Incr("packets", 1)
@@ -589,11 +567,12 @@ CAPTURE:
 
 //If we shut down without doing this stuff, we will lose some of the packet data
 //still in the processing pipeline.
-func gracefulShutdown(channels []chan *packetData,
-	reChan chan tcpDataStruct,
-	logChan chan dnsLogEntry) {
+func gracefulShutdown(
+	channels []chan *packetData,
+	reChan chan TCPDataStruct,
+	logChan chan DNSLogEntry) {
 
-	var wait_time int = 6
+	var waitTime int = 6
 	var numprocs int = len(channels)
 
 	log.Debug("Draining TCP data...")
@@ -601,9 +580,9 @@ func gracefulShutdown(channels []chan *packetData,
 OUTER:
 	for {
 		select {
-		case reassembledTcp := <-reChan:
-			pd := NewTcpData(reassembledTcp)
-			channels[int(reassembledTcp.IpLayer.FastHash())&(numprocs-1)] <- pd
+		case reassembledTCP := <-reChan:
+			pd := newTCPData(reassembledTCP)
+			channels[int(reassembledTCP.IPLayer.FastHash())&(numprocs-1)] <- pd
 		case <-time.After(6 * time.Second):
 			break OUTER
 		}
@@ -618,8 +597,8 @@ OUTER:
 	close(logChan)
 
 	for len(logChan) > 0 {
-		wait_time--
-		if wait_time == 0 {
+		waitTime--
+		if waitTime == 0 {
 			log.Debug("exited with messages remaining in log queue!")
 			return
 		}
@@ -679,11 +658,11 @@ func main() {
 		log.Fatal("Could not initilize the capture.")
 	}
 
-	logOpts := NewLogOptions(config)
+	logOpts := newLogOptions(config)
 
 	logChan := initLogging(logOpts, config)
 
-	reChan := make(chan tcpDataStruct)
+	reChan := make(chan TCPDataStruct)
 
 	sigs := make(chan os.Signal, 1)
 	done := make(chan bool, 1)

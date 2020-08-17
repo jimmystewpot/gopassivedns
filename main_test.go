@@ -61,8 +61,8 @@ func getDNSLayers(which string) []*layers.DNS {
 
 }
 
-func ToSlice(c chan dnsLogEntry) []dnsLogEntry {
-	s := make([]dnsLogEntry, 0)
+func ToSlice(c chan DNSLogEntry) []DNSLogEntry {
+	s := make([]DNSLogEntry, 0)
 
 	for {
 		select {
@@ -74,7 +74,7 @@ func ToSlice(c chan dnsLogEntry) []dnsLogEntry {
 	}
 }
 
-func LogMirrorBg(source chan dnsLogEntry, target chan dnsLogEntry) {
+func LogMirrorBg(source chan DNSLogEntry, target chan DNSLogEntry) {
 	for {
 		select {
 		case i := <-source:
@@ -99,7 +99,7 @@ func BenchmarkALogEntry(b *testing.B) {
 	var length int = 141
 
 	DNSlayers := getDNSLayers("a")
-	logs := []dnsLogEntry{}
+	logs := []DNSLogEntry{}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -117,7 +117,7 @@ func BenchmarkLogMarshal(b *testing.B) {
 	var length int = 141
 
 	DNSlayers := getDNSLayers("a")
-	logs := []dnsLogEntry{}
+	logs := []DNSLogEntry{}
 
 	logs = nil
 	initLogEntry(syslogPriority, srcIP, srcPort, dstIP, &length, &logProtocol, *DNSlayers[0], *DNSlayers[1], time.Now(), &logs)
@@ -187,7 +187,7 @@ func BenchmarkHandleUDPPackets(b *testing.B) {
 	gcInterval, _ := time.ParseDuration("3m")
 
 	var syslogPriority string = "DEBUG"
-	var logChan = make(chan dnsLogEntry)
+	var logChan = make(chan DNSLogEntry)
 
 	go func() {
 		for {
@@ -203,14 +203,14 @@ func BenchmarkHandleUDPPackets(b *testing.B) {
 		packetSource := getPacketData("100_udp_lookups")
 		packetSource.DecodeOptions.Lazy = true
 		for packet := range packetSource.Packets() {
-			packetChan <- NewPacketData(packet)
+			packetChan <- newPacketData(packet)
 		}
 		close(packetChan)
 
 		//print(".")
 		b.StartTimer()
 		var conntable = connectionTable{
-			connections: make(map[string]dnsMapEntry),
+			connections: make(map[string]DNSMapEntry),
 		}
 		handlePacket(&conntable, packetChan, logChan, syslogPriority, gcInterval, gcAge, 1, stats)
 	}
@@ -371,18 +371,18 @@ func TestParseA(t *testing.T) {
 
 	var syslogPriority string = "DEBUG"
 	var packetChan = make(chan *packetData)
-	var logChan = make(chan dnsLogEntry)
+	var logChan = make(chan DNSLogEntry)
 
 	//Consume load
 	var conntable = connectionTable{
-		connections: make(map[string]dnsMapEntry),
+		connections: make(map[string]DNSMapEntry),
 	}
 	go handlePacket(&conntable, packetChan, logChan, syslogPriority, gcInterval, gcAge, 1, stats)
 
 	packetSource := getPacketData("a")
 	packetSource.DecodeOptions.Lazy = true
 	for packet := range packetSource.Packets() {
-		packetChan <- NewPacketData(packet)
+		packetChan <- newPacketData(packet)
 	}
 
 	select {
@@ -394,28 +394,28 @@ func TestParseA(t *testing.T) {
 		}
 
 		//validate values of log struct
-		if log.Query_ID != 0x4fb8 {
-			t.Fatalf("Bad Query ID %d, expecting %d\n", log.Query_ID, 0x4fb8)
+		if log.QueryID != 0x4fb8 {
+			t.Fatalf("Bad Query ID %d, expecting %d\n", log.QueryID, 0x4fb8)
 		}
 
-		if log.Response_Code != 0 {
-			t.Fatalf("Bad Response code %d, expecting 0\n", log.Response_Code)
+		if log.ResponseCode != 0 {
+			t.Fatalf("Bad Response code %d, expecting 0\n", log.ResponseCode)
 		}
 
 		if log.Question != "www.slashdot.org" {
 			t.Fatalf("Bad question %s, expecting www.slashdot.org\n", log.Question)
 		}
 
-		if log.Question_Type != "A" {
-			t.Fatalf("Bad question type %s, expecting A\n", log.Question_Type)
+		if log.QuestionType != "A" {
+			t.Fatalf("Bad question type %s, expecting A\n", log.QuestionType)
 		}
 
 		if log.Answer != "216.34.181.48" {
 			t.Fatalf("Bad answer %s, expecting 216.34.181.48\n", log.Answer)
 		}
 
-		if log.Answer_Type != "A" {
-			t.Fatalf("Bad answer type %s, expecting A\n", log.Answer_Type)
+		if log.AnswerType != "A" {
+			t.Fatalf("Bad answer type %s, expecting A\n", log.AnswerType)
 		}
 
 		if log.TTL != 110 {
@@ -448,16 +448,16 @@ func TestParseAAAA(t *testing.T) {
 
 	var syslogPriority string = "DEBUG"
 	var packetChan = make(chan *packetData)
-	var logChan = make(chan dnsLogEntry)
+	var logChan = make(chan DNSLogEntry)
 	var conntable = connectionTable{
-		connections: make(map[string]dnsMapEntry),
+		connections: make(map[string]DNSMapEntry),
 	}
 	go handlePacket(&conntable, packetChan, logChan, syslogPriority, gcInterval, gcAge, 1, nil)
 
 	packetSource := getPacketData("aaaa")
 	packetSource.DecodeOptions.Lazy = true
 	for packet := range packetSource.Packets() {
-		packetChan <- NewPacketData(packet)
+		packetChan <- newPacketData(packet)
 	}
 
 	select {
@@ -469,28 +469,28 @@ func TestParseAAAA(t *testing.T) {
 		}
 
 		//validate values of log struct
-		if log.Query_ID != 0x1a63 {
-			t.Fatalf("Bad Query ID %d, expecting %d\n", log.Query_ID, 0x1a63)
+		if log.QueryID != 0x1a63 {
+			t.Fatalf("Bad Query ID %d, expecting %d\n", log.QueryID, 0x1a63)
 		}
 
-		if log.Response_Code != 0 {
-			t.Fatalf("Bad Response code %d, expecting 0\n", log.Response_Code)
+		if log.ResponseCode != 0 {
+			t.Fatalf("Bad Response code %d, expecting 0\n", log.ResponseCode)
 		}
 
 		if log.Question != "www.google.com" {
 			t.Fatalf("Bad question %s, expecting www.google.com\n", log.Question)
 		}
 
-		if log.Question_Type != "AAAA" {
-			t.Fatalf("Bad question type %s, expecting AAAA\n", log.Question_Type)
+		if log.QuestionType != "AAAA" {
+			t.Fatalf("Bad question type %s, expecting AAAA\n", log.QuestionType)
 		}
 
 		if log.Answer != "2607:f8b0:4001:c02::93" {
 			t.Fatalf("Bad answer %s, expecting 2607:f8b0:4001:c02::93\n", log.Answer)
 		}
 
-		if log.Answer_Type != "AAAA" {
-			t.Fatalf("Bad answer type %s, expecting AAAA\n", log.Answer_Type)
+		if log.AnswerType != "AAAA" {
+			t.Fatalf("Bad answer type %s, expecting AAAA\n", log.AnswerType)
 		}
 
 		if log.TTL != 55 {
@@ -523,16 +523,16 @@ func TestParseNS(t *testing.T) {
 
 	var syslogPriority string = "DEBUG"
 	var packetChan = make(chan *packetData)
-	var logChan = make(chan dnsLogEntry)
+	var logChan = make(chan DNSLogEntry)
 	var conntable = connectionTable{
-		connections: make(map[string]dnsMapEntry),
+		connections: make(map[string]DNSMapEntry),
 	}
 	go handlePacket(&conntable, packetChan, logChan, syslogPriority, gcInterval, gcAge, 1, nil)
 
 	packetSource := getPacketData("ns")
 	packetSource.DecodeOptions.Lazy = true
 	for packet := range packetSource.Packets() {
-		packetChan <- NewPacketData(packet)
+		packetChan <- newPacketData(packet)
 	}
 
 	select {
@@ -544,28 +544,28 @@ func TestParseNS(t *testing.T) {
 		}
 
 		//validate values of log struct
-		if log.Query_ID != 0x6162 {
-			t.Fatalf("Bad Query ID %d, expecting %d\n", log.Query_ID, 0x6162)
+		if log.QueryID != 0x6162 {
+			t.Fatalf("Bad Query ID %d, expecting %d\n", log.QueryID, 0x6162)
 		}
 
-		if log.Response_Code != 0 {
-			t.Fatalf("Bad Response code %d, expecting 0\n", log.Response_Code)
+		if log.ResponseCode != 0 {
+			t.Fatalf("Bad Response code %d, expecting 0\n", log.ResponseCode)
 		}
 
 		if log.Question != "google.com" {
 			t.Fatalf("Bad question %s, expecting google.com\n", log.Question)
 		}
 
-		if log.Question_Type != "NS" {
-			t.Fatalf("Bad question type %s, expecting NS\n", log.Question_Type)
+		if log.QuestionType != "NS" {
+			t.Fatalf("Bad question type %s, expecting NS\n", log.QuestionType)
 		}
 
 		if log.Answer != "ns2.google.com" {
 			t.Fatalf("Bad answer %s, expecting ns2.google.com\n", log.Answer)
 		}
 
-		if log.Answer_Type != "NS" {
-			t.Fatalf("Bad answer type %s, expecting NS\n", log.Answer_Type)
+		if log.AnswerType != "NS" {
+			t.Fatalf("Bad answer type %s, expecting NS\n", log.AnswerType)
 		}
 
 		if log.TTL != 21581 {
@@ -597,17 +597,17 @@ func TestParseMX(t *testing.T) {
 
 	var syslogPriority string = "DEBUG"
 	var packetChan = make(chan *packetData)
-	var logChan = make(chan dnsLogEntry)
+	var logChan = make(chan DNSLogEntry)
 
 	var conntable = connectionTable{
-		connections: make(map[string]dnsMapEntry),
+		connections: make(map[string]DNSMapEntry),
 	}
 	go handlePacket(&conntable, packetChan, logChan, syslogPriority, gcInterval, gcAge, 1, nil)
 
 	packetSource := getPacketData("mx")
 	packetSource.DecodeOptions.Lazy = true
 	for packet := range packetSource.Packets() {
-		packetChan <- NewPacketData(packet)
+		packetChan <- newPacketData(packet)
 	}
 
 	select {
@@ -619,28 +619,28 @@ func TestParseMX(t *testing.T) {
 		}
 
 		//validate values of log struct
-		if log.Query_ID != 0x6f87 {
-			t.Fatalf("Bad Query ID %d, expecting %d\n", log.Query_ID, 0x6f87)
+		if log.QueryID != 0x6f87 {
+			t.Fatalf("Bad Query ID %d, expecting %d\n", log.QueryID, 0x6f87)
 		}
 
-		if log.Response_Code != 0 {
-			t.Fatalf("Bad Response code %d, expecting 0\n", log.Response_Code)
+		if log.ResponseCode != 0 {
+			t.Fatalf("Bad Response code %d, expecting 0\n", log.ResponseCode)
 		}
 
 		if log.Question != "google.com" {
 			t.Fatalf("Bad question %s, expecting google.com\n", log.Question)
 		}
 
-		if log.Question_Type != "MX" {
-			t.Fatalf("Bad question type %s, expecting MX\n", log.Question_Type)
+		if log.QuestionType != "MX" {
+			t.Fatalf("Bad question type %s, expecting MX\n", log.QuestionType)
 		}
 
 		if log.Answer != "alt3.aspmx.l.google.com" {
 			t.Fatalf("Bad answer %s, expecting alt3.aspmx.l.google.com\n", log.Answer)
 		}
 
-		if log.Answer_Type != "MX" {
-			t.Fatalf("Bad answer type %s, expecting MX\n", log.Answer_Type)
+		if log.AnswerType != "MX" {
+			t.Fatalf("Bad answer type %s, expecting MX\n", log.AnswerType)
 		}
 
 		if log.TTL != 567 {
@@ -672,17 +672,17 @@ func TestParseNXDOMAIN(t *testing.T) {
 
 	var syslogPriority string = "DEBUG"
 	var packetChan = make(chan *packetData)
-	var logChan = make(chan dnsLogEntry)
+	var logChan = make(chan DNSLogEntry)
 
 	var conntable = connectionTable{
-		connections: make(map[string]dnsMapEntry),
+		connections: make(map[string]DNSMapEntry),
 	}
 	go handlePacket(&conntable, packetChan, logChan, syslogPriority, gcInterval, gcAge, 1, nil)
 
 	packetSource := getPacketData("nxdomain")
 	packetSource.DecodeOptions.Lazy = true
 	for packet := range packetSource.Packets() {
-		packetChan <- NewPacketData(packet)
+		packetChan <- newPacketData(packet)
 	}
 
 	logs := ToSlice(logChan)
@@ -694,28 +694,28 @@ func TestParseNXDOMAIN(t *testing.T) {
 	log := logs[0]
 
 	//validate values of log struct
-	if log.Query_ID != 0xb369 {
-		t.Fatalf("Bad Query ID %d, expecting %d\n", log.Query_ID, 0xb369)
+	if log.QueryID != 0xb369 {
+		t.Fatalf("Bad Query ID %d, expecting %d\n", log.QueryID, 0xb369)
 	}
 
-	if log.Response_Code != 3 {
-		t.Fatalf("Bad Response code %d, expecting 3\n", log.Response_Code)
+	if log.ResponseCode != 3 {
+		t.Fatalf("Bad Response code %d, expecting 3\n", log.ResponseCode)
 	}
 
 	if log.Question != "asdtartfgeasf.asdfgsdf.com" {
 		t.Fatalf("Bad question %s, expecting asdtartfgeasf.asdfgsdf.com\n", log.Question)
 	}
 
-	if log.Question_Type != "A" {
-		t.Fatalf("Bad question type %s, expecting A\n", log.Question_Type)
+	if log.QuestionType != "A" {
+		t.Fatalf("Bad question type %s, expecting A\n", log.QuestionType)
 	}
 
 	if log.Answer != "Non-Existent Domain" {
 		t.Fatalf("Bad answer %s, expecting Non-Existent Domain\n", log.Answer)
 	}
 
-	if log.Answer_Type != "" {
-		t.Fatalf("Bad answer type %s, expecting an empty string\n", log.Answer_Type)
+	if log.AnswerType != "" {
+		t.Fatalf("Bad answer type %s, expecting an empty string\n", log.AnswerType)
 	}
 
 	if log.TTL != 0 {
@@ -744,18 +744,18 @@ func TestParseMultipleUDPPackets(t *testing.T) {
 	//if I don't specify 6 here, this test stalls putting packets into the channel.
 	//so strange.
 	var packetChan = make(chan *packetData, 6)
-	var logChan = make(chan dnsLogEntry)
+	var logChan = make(chan DNSLogEntry)
 	var syslogPriority string = "DEBUG"
 
 	var conntable = connectionTable{
-		connections: make(map[string]dnsMapEntry),
+		connections: make(map[string]DNSMapEntry),
 	}
 	go handlePacket(&conntable, packetChan, logChan, syslogPriority, gcInterval, gcAge, 1, nil)
 
 	packetSource := getPacketData("multiple_udp")
 	packetSource.DecodeOptions.Lazy = true
 	for packet := range packetSource.Packets() {
-		packetChan <- NewPacketData(packet)
+		packetChan <- newPacketData(packet)
 	}
 
 	logs := ToSlice(logChan)
@@ -766,28 +766,28 @@ func TestParseMultipleUDPPackets(t *testing.T) {
 	}
 
 	//validate values of log struct
-	if logs[2].Query_ID != 0xb967 {
-		t.Fatalf("Bad Query ID %d, expecting %d\n", logs[2].Query_ID, 0x6f87)
+	if logs[2].QueryID != 0xb967 {
+		t.Fatalf("Bad Query ID %d, expecting %d\n", logs[2].QueryID, 0x6f87)
 	}
 
-	if logs[2].Response_Code != 0 {
-		t.Fatalf("Bad Response code %d, expecting 0\n", logs[2].Response_Code)
+	if logs[2].ResponseCode != 0 {
+		t.Fatalf("Bad Response code %d, expecting 0\n", logs[2].ResponseCode)
 	}
 
 	if logs[2].Question != "www.fark.com" {
 		t.Fatalf("Bad question %s, expecting google.com\n", logs[2].Question)
 	}
 
-	if logs[2].Question_Type != "A" {
-		t.Fatalf("Bad question type %s, expecting MX\n", logs[2].Question_Type)
+	if logs[2].QuestionType != "A" {
+		t.Fatalf("Bad question type %s, expecting MX\n", logs[2].QuestionType)
 	}
 
 	if logs[2].Answer != "64.191.171.200" {
 		t.Fatalf("Bad answer %s, expecting alt3.aspmx.l.google.com\n", logs[2].Answer)
 	}
 
-	if logs[2].Answer_Type != "A" {
-		t.Fatalf("Bad answer type %s, expecting MX\n", logs[2].Answer_Type)
+	if logs[2].AnswerType != "A" {
+		t.Fatalf("Bad answer type %s, expecting MX\n", logs[2].AnswerType)
 	}
 
 	if logs[2].TTL != 600 {
@@ -797,16 +797,16 @@ func TestParseMultipleUDPPackets(t *testing.T) {
 }
 
 /*
-doCapture(handle *pcap.Handle, logChan chan dnsLogEntry,
+doCapture(handle *pcap.Handle, logChan chan DNSLogEntry,
 	gcAge string, gcInterval string, numprocs int) {
 */
 
 func TestDoCaptureUDP(t *testing.T) {
 
 	handle := getHandle("100_udp_lookups")
-	var logChan = make(chan dnsLogEntry, 100)
-	var reChan = make(chan tcpDataStruct)
-	var logStash = make(chan dnsLogEntry, 100)
+	var logChan = make(chan DNSLogEntry, 100)
+	var reChan = make(chan TCPDataStruct)
+	var logStash = make(chan DNSLogEntry, 100)
 	var done = make(chan bool, 1)
 
 	go LogMirrorBg(logChan, logStash)
@@ -824,9 +824,9 @@ func TestDoCaptureUDP(t *testing.T) {
 func TestDoCaptureTCP(t *testing.T) {
 
 	handle := getHandle("100_tcp_lookups")
-	var logChan = make(chan dnsLogEntry, 400)
-	var reChan = make(chan tcpDataStruct, 1000)
-	var logStash = make(chan dnsLogEntry, 400)
+	var logChan = make(chan DNSLogEntry, 400)
+	var reChan = make(chan TCPDataStruct, 1000)
+	var logStash = make(chan DNSLogEntry, 400)
 	var done = make(chan bool, 1)
 
 	go LogMirrorBg(logChan, logStash)
@@ -883,18 +883,18 @@ func TestConntableGC(t *testing.T) {
 
 	var syslogPriority string = "DEBUG"
 	var packetChan = make(chan *packetData)
-	var logChan = make(chan dnsLogEntry)
+	var logChan = make(chan DNSLogEntry)
 
 	var conntable = connectionTable{
-		connections: make(map[string]dnsMapEntry),
+		connections: make(map[string]DNSMapEntry),
 	}
-	go cleanDnsCache(&conntable, gcAge, gcInterval, stats)
+	go cleanDNSCache(&conntable, gcAge, gcInterval, stats)
 	go handlePacket(&conntable, packetChan, logChan, syslogPriority, gcInterval, gcAge, 1, stats)
 
 	packetSource := getPacketData("mx")
 	packetSource.DecodeOptions.Lazy = true
 	for packet := range packetSource.Packets() {
-		packetChan <- NewPacketData(packet)
+		packetChan <- newPacketData(packet)
 		time.Sleep(time.Duration(11) * time.Second)
 	}
 

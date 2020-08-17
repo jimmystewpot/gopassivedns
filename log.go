@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/pquerna/ffjson/ffjson"
 	"github.com/quipo/statsd"
+	log "github.com/sirupsen/logrus"
 	"github.com/vmihailenco/msgpack"
 	lumberjack "gopkg.in/natefinch/lumberjack.v2"
 )
@@ -36,7 +36,8 @@ type logOptions struct {
 	control        chan string
 }
 
-func NewLogOptions(config *pdnsConfig) *logOptions {
+// newLogOptions returns the logging configuration
+func newLogOptions(config *pdnsConfig) *logOptions {
 	return &logOptions{
 		quiet:          config.quiet,
 		debug:          config.debug,
@@ -77,27 +78,28 @@ func (lo *logOptions) LogToFluentd() bool {
 	return (lo.FluentdSocket != "")
 }
 
+// DNSLogEntry is the JSON mapping of field names to the struct for logging output.
 // codebeat:disable[TOO_MANY_IVARS]
-type dnsLogEntry struct {
-	Query_ID             uint16 `json:"query_id"`
-	Response_Code        int    `json:"rcode"`
-	Question             string `json:"q"`
-	Question_Type        string `json:"qtype"`
-	Answer               string `json:"a"`
-	Answer_Type          string `json:"atype"`
-	TTL                  uint32 `json:"ttl"`
-	Server               net.IP `json:"dst"`
-	Client               net.IP `json:"src"`
-	Timestamp            string `json:"tstamp"`
-	Elapsed              int64  `json:"elapsed"`
-	Client_Port          string `json:"sport"`
-	Level                string `json:"level"` // syslog level
-	Length               int    `json:"bytes"`
-	Proto                string `json:"protocol"`
-	Truncated            bool   `json:"truncated"`
-	Authoritative_Answer bool   `json:"aa"`
-	Recursion_Desired    bool   `json:"rd"`
-	Recursion_Available  bool   `json:"ra"`
+type DNSLogEntry struct {
+	QueryID             uint16 `json:"query_id"`
+	ResponseCode        int    `json:"rcode"`
+	Question            string `json:"q"`
+	QuestionType        string `json:"qtype"`
+	Answer              string `json:"a"`
+	AnswerType          string `json:"atype"`
+	TTL                 uint32 `json:"ttl"`
+	Server              net.IP `json:"dst"`
+	Client              net.IP `json:"src"`
+	Timestamp           string `json:"tstamp"`
+	Elapsed             int64  `json:"elapsed"`
+	ClientPort          string `json:"sport"`
+	Level               string `json:"level"` // syslog level
+	Length              int    `json:"bytes"`
+	Proto               string `json:"protocol"`
+	Truncated           bool   `json:"truncated"`
+	AuthoritativeAnswer bool   `json:"aa"`
+	RecursionDesired    bool   `json:"rd"`
+	RecursionAvailable  bool   `json:"ra"`
 
 	encoded []byte //to hold the marshaled data structure
 	err     error  //encoding errors
@@ -106,25 +108,25 @@ type dnsLogEntry struct {
 // codebeat:enable[TOO_MANY_IVARS]
 
 //private, idempotent function that ensures the json is encoded
-func (dle *dnsLogEntry) ensureEncoded() {
+func (dle *DNSLogEntry) ensureEncoded() {
 	if dle.encoded == nil && dle.err == nil {
 		dle.encoded, dle.err = ffjson.Marshal(dle)
 	}
 }
 
-//returns length of the encoded JSON
-func (dle *dnsLogEntry) Size() int {
+// Size returns the size of the encoded entry.
+func (dle *DNSLogEntry) Size() int {
 	dle.ensureEncoded()
 	return len(dle.encoded)
 }
 
-//public method to encode the string
-func (dle *dnsLogEntry) Encode() ([]byte, error) {
+// Encode the returned log entry
+func (dle *DNSLogEntry) Encode() ([]byte, error) {
 	dle.ensureEncoded()
 	return dle.encoded, dle.err
 }
 
-func initLogging(opts *logOptions, config *pdnsConfig) chan dnsLogEntry {
+func initLogging(opts *logOptions, config *pdnsConfig) chan DNSLogEntry {
 	if opts.IsDebug() {
 		log.SetLevel(log.DebugLevel)
 	}
@@ -132,13 +134,13 @@ func initLogging(opts *logOptions, config *pdnsConfig) chan dnsLogEntry {
 	//TODO: further logging setup?
 
 	/* spin up logging channel */
-	var logChan = make(chan dnsLogEntry, packetQueue*config.numprocs)
+	var logChan = make(chan DNSLogEntry, packetQueue*config.numprocs)
 
 	return logChan
 
 }
 
-func watchLogStats(stats *statsd.StatsdBuffer, logC chan dnsLogEntry, logs []chan dnsLogEntry) {
+func watchLogStats(stats *statsd.StatsdBuffer, logC chan DNSLogEntry, logs []chan DNSLogEntry) {
 	for {
 		stats.Gauge("incoming_log_depth", int64(len(logC)))
 		for i, logChan := range logs {
@@ -150,42 +152,42 @@ func watchLogStats(stats *statsd.StatsdBuffer, logC chan dnsLogEntry, logs []cha
 }
 
 //Spin up required logging threads and then round-robin log messages to log sinks
-func logConn(logC chan dnsLogEntry, opts *logOptions, stats *statsd.StatsdBuffer) {
+func logConn(logC chan DNSLogEntry, opts *logOptions, stats *statsd.StatsdBuffer) {
 
 	//holds the channels for the outgoing log channels
-	var logs []chan dnsLogEntry
+	var logs []chan DNSLogEntry
 
 	if opts.LogToStdout() {
 		log.Debug("STDOUT logging enabled")
-		stdoutChan := make(chan dnsLogEntry)
+		stdoutChan := make(chan DNSLogEntry)
 		logs = append(logs, stdoutChan)
 		go logConnStdout(stdoutChan)
 	}
 
 	if opts.LogToFile() {
 		log.Debug("file logging enabled to " + opts.Filename)
-		fileChan := make(chan dnsLogEntry)
+		fileChan := make(chan DNSLogEntry)
 		logs = append(logs, fileChan)
 		go logConnFile(fileChan, opts)
 	}
 
 	if opts.LogToKafka() {
 		log.Debug("kafka logging enabled")
-		kafkaChan := make(chan dnsLogEntry)
+		kafkaChan := make(chan DNSLogEntry)
 		logs = append(logs, kafkaChan)
 		go logConnKafka(kafkaChan, opts)
 	}
 
 	if opts.LogToSyslog() {
 		log.Debug("syslog logging enabled")
-		syslogChan := make(chan dnsLogEntry)
+		syslogChan := make(chan DNSLogEntry)
 		logs = append(logs, syslogChan)
 		go logConnSyslog(syslogChan, opts)
 	}
 
 	if opts.LogToFluentd() {
 		log.Debug("fluentd logging enabled")
-		fluentdlogChan := make(chan dnsLogEntry)
+		fluentdlogChan := make(chan DNSLogEntry)
 		logs = append(logs, fluentdlogChan)
 		go logConnFluentd(fluentdlogChan, opts)
 	}
@@ -210,7 +212,7 @@ func logConn(logC chan dnsLogEntry, opts *logOptions, stats *statsd.StatsdBuffer
 }
 
 //logs to stdout
-func logConnStdout(logC chan dnsLogEntry) {
+func logConnStdout(logC chan DNSLogEntry) {
 	for message := range logC {
 		encoded, _ := message.Encode()
 		fmt.Println(string(encoded))
@@ -218,7 +220,7 @@ func logConnStdout(logC chan dnsLogEntry) {
 }
 
 //logs to a file
-func logConnFile(logC chan dnsLogEntry, opts *logOptions) {
+func logConnFile(logC chan DNSLogEntry, opts *logOptions) {
 
 	logger := &lumberjack.Logger{
 		Filename:   opts.Filename,
@@ -238,7 +240,7 @@ func logConnFile(logC chan dnsLogEntry, opts *logOptions) {
 }
 
 //logs to kafka
-func logConnKafka(logC chan dnsLogEntry, opts *logOptions) {
+func logConnKafka(logC chan DNSLogEntry, opts *logOptions) {
 	for message := range logC {
 		encoded, _ := message.Encode()
 		fmt.Println("Kafka: " + string(encoded))
@@ -247,7 +249,7 @@ func logConnKafka(logC chan dnsLogEntry, opts *logOptions) {
 }
 
 //logs to syslog
-func logConnSyslog(logC chan dnsLogEntry, opts *logOptions) {
+func logConnSyslog(logC chan DNSLogEntry, opts *logOptions) {
 
 	level, err := levelToType(opts.SyslogPriority)
 	if err != nil {
@@ -270,7 +272,7 @@ func logConnSyslog(logC chan dnsLogEntry, opts *logOptions) {
 }
 
 //logs to fluentd via a unix socket
-func logConnFluentd(logC chan dnsLogEntry, opts *logOptions) {
+func logConnFluentd(logC chan DNSLogEntry, opts *logOptions) {
 	Tag := opts.SensorName + ".service"
 	tag, _ := msgpack.Marshal(Tag)
 

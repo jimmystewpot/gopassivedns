@@ -9,15 +9,13 @@ import (
 	"github.com/google/gopacket/layers"
 )
 
-/*
-  struct to store either reassembled TCP streams or packets
-  Type will be tcp or packet for those type
-  or it can be 'flush' or 'stop' to signal packet handling threads
-*/
+//  struct to store either reassembled TCP streams or packets
+// Type will be tcp or packet for those type
+// or it can be 'flush' or 'stop' to signal packet handling threads
 // codebeat:disable[TOO_MANY_IVARS]
 type packetData struct {
 	packet   gopacket.Packet
-	tcpdata  tcpDataStruct
+	tcpdata  TCPDataStruct
 	datatype string
 
 	foundLayerTypes []gopacket.LayerType
@@ -32,14 +30,14 @@ type packetData struct {
 
 // codebeat:enable[TOO_MANY_IVARS]
 
-func NewTcpData(tcpdata tcpDataStruct) *packetData {
+func newTCPData(tcpdata TCPDataStruct) *packetData {
 	var pd packetData
 	pd.datatype = "tcp"
 	pd.tcpdata = tcpdata
 	return &pd
 }
 
-func NewPacketData(packet gopacket.Packet) *packetData {
+func newPacketData(packet gopacket.Packet) *packetData {
 	var pd packetData
 	pd.datatype = "packet"
 	pd.packet = packet
@@ -58,7 +56,7 @@ func (pd *packetData) Parse() error {
 			pd.payload,
 		)
 
-		dnsParser.DecodeLayers(pd.tcpdata.DnsData, &pd.foundLayerTypes)
+		dnsParser.DecodeLayers(pd.tcpdata.DNSData, &pd.foundLayerTypes)
 
 		return nil
 	} else if pd.datatype == "packet" {
@@ -92,18 +90,15 @@ func (pd *packetData) Parse() error {
 func (pd *packetData) GetSrcIP() net.IP {
 	if pd.ipLayer != nil {
 		return pd.ipLayer.SrcIP
-	} else {
-		return net.IP(pd.tcpdata.IpLayer.Src().Raw())
 	}
-
+	return net.IP(pd.tcpdata.IPLayer.Src().Raw())
 }
 
 func (pd *packetData) GetDstIP() net.IP {
 	if pd.ipLayer != nil {
 		return pd.ipLayer.DstIP
-	} else {
-		return net.IP(pd.tcpdata.IpLayer.Dst().Raw())
 	}
+	return net.IP(pd.tcpdata.IPLayer.Dst().Raw())
 }
 
 func (pd *packetData) IsTCPStream() bool {
@@ -137,21 +132,20 @@ func (pd *packetData) HasDNSLayer() bool {
 func (pd *packetData) GetTimestamp() *time.Time {
 	if pd.datatype == "packet" {
 		return &pd.packet.Metadata().Timestamp
-	} else {
-		return nil
 	}
+	return nil
+
 }
 
 func (pd *packetData) GetSize() *int {
 	if pd.datatype == "packet" {
 		return &pd.packet.Metadata().Length
-	} else {
-		// This needs to be improved. Currently because GetSize only works with UDP
-		// that is because we can't measure the size of the entire re-assembled stream
-		// of TCP right now. Fix pending.
-		sz := int(0)
-		return &sz
 	}
+	// This needs to be improved. Currently because GetSize only works with UDP
+	// that is because we can't measure the size of the entire re-assembled stream
+	// of TCP right now. Fix pending.
+	sz := int(0)
+	return &sz
 }
 
 func (pd *packetData) GetProto() *string {
