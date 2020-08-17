@@ -306,7 +306,7 @@ func handleDNS(
 func handlePacket(
 	conntable *connectionTable,
 	packets chan *packetData,
-	logC chan DNSLogEntry,
+	logChan chan DNSLogEntry,
 	syslogPriority string,
 	gcInterval time.Duration,
 	gcAge time.Duration,
@@ -361,7 +361,7 @@ func handlePacket(
 
 				handleDNS(conntable,
 					packet.GetDNSLayer(),
-					logC,
+					logChan,
 					syslogPriority,
 					srcIP,
 					srcPort,
@@ -390,7 +390,7 @@ func handlePacket(
 				dstPort := strconv.Itoa(int(packet.udpLayer.SrcPort))
 				handleDNS(conntable,
 					packet.GetDNSLayer(),
-					logC,
+					logChan,
 					syslogPriority,
 					srcIP,
 					srcPort,
