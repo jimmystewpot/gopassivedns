@@ -91,20 +91,20 @@ func (pd *packetData) Parse() error {
 }
 
 func (pd *packetData) GetSrcIP() net.IP {
-	if pd.IPv4Layer != nil {
+	if pd.HasIPv4Layer() {
 		return pd.IPv4Layer.SrcIP
 	}
-	if pd.IPv6Layer != nil {
+	if pd.HasIPv6Layer() {
 		return pd.IPv6Layer.SrcIP
 	}
 	return net.IP(pd.tcpdata.IPLayer.Src().Raw())
 }
 
 func (pd *packetData) GetDstIP() net.IP {
-	if pd.IPv4Layer != nil {
+	if pd.HasIPv4Layer() {
 		return pd.IPv4Layer.DstIP
 	}
-	if pd.IPv6Layer != nil {
+	if pd.HasIPv6Layer() {
 		return pd.IPv6Layer.DstIP
 	}
 	return net.IP(pd.tcpdata.IPLayer.Dst().Raw())

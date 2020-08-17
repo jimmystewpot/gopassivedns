@@ -517,6 +517,83 @@ func TestParseAAAA(t *testing.T) {
 
 }
 
+func TestParseIPv6(t *testing.T) {
+	gcAge, _ := time.ParseDuration("-1m")
+	gcInterval, _ := time.ParseDuration("3m")
+
+	var syslogPriority string = "DEBUG"
+	var packetChan = make(chan *packetData)
+	var logChan = make(chan DNSLogEntry)
+
+	//Consume load
+	var conntable = connectionTable{
+		connections: make(map[string]DNSMapEntry),
+	}
+	go handlePacket(&conntable, packetChan, logChan, syslogPriority, gcInterval, gcAge, 1, stats)
+
+	packetSource := getPacketData("ipv6")
+	packetSource.DecodeOptions.Lazy = true
+	for packet := range packetSource.Packets() {
+		packetChan <- newPacketData(packet)
+	}
+
+	select {
+	case log := <-logChan:
+
+		if len(logChan) > 0 {
+			//if we have more than 1 log message, we miss-parsed
+			t.Fatal("More than 1 log message was present in the channel\n")
+		}
+
+		//validate values of log struct
+		if log.QueryID != 60409 {
+			t.Fatalf("Bad Query ID %d, expecting %d\n", log.QueryID, 0x4fb8)
+		}
+
+		if log.ResponseCode != 0 {
+			t.Fatalf("Bad Response code %d, expecting 0\n", log.ResponseCode)
+		}
+
+		if log.Question != "www.google.com" {
+			t.Fatalf("Bad question %s, expecting www.google.com\n", log.Question)
+		}
+
+		if log.QuestionType != "A" {
+			t.Fatalf("Bad question type %s, expecting A\n", log.QuestionType)
+		}
+
+		if log.Answer != "172.217.167.68" {
+			t.Fatalf("Bad answer %s, expecting 172.217.167.68\n", log.Answer)
+		}
+
+		if log.AnswerType != "A" {
+			t.Fatalf("Bad answer type %s, expecting A\n", log.AnswerType)
+		}
+
+		if log.TTL != 285 {
+			t.Fatalf("Bad TTL %d, expecting 285", log.TTL)
+		}
+
+		/*        if log.Server !=  {
+		              t.Fatal("")
+		          }
+
+		          if log.Client !=  {
+		              t.Fatal("")
+		          }*/
+
+		//parse the JSON and make sure it works
+		log.Encode()
+		if log.encoded == nil || log.err != nil {
+			t.Fatal("log marshaling error!")
+		}
+
+	case <-time.After(time.Second):
+		t.Fatal("No log messages were recieved")
+	}
+
+}
+
 func TestParseNS(t *testing.T) {
 	gcAge, _ := time.ParseDuration("-1m")
 	gcInterval, _ := time.ParseDuration("3m")
