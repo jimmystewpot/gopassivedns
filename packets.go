@@ -20,12 +20,13 @@ type packetData struct {
 
 	foundLayerTypes []gopacket.LayerType
 
-	ethLayer *layers.Ethernet
-	ipLayer  *layers.IPv4
-	udpLayer *layers.UDP
-	tcpLayer *layers.TCP
-	dns      *layers.DNS
-	payload  *gopacket.Payload
+	ethLayer  *layers.Ethernet
+	IPv4Layer *layers.IPv4
+	IPv6Layer *layers.IPv6
+	udpLayer  *layers.UDP
+	tcpLayer  *layers.TCP
+	dns       *layers.DNS
+	payload   *gopacket.Payload
 }
 
 // codebeat:enable[TOO_MANY_IVARS]
@@ -61,7 +62,8 @@ func (pd *packetData) Parse() error {
 		return nil
 	} else if pd.datatype == "packet" {
 		pd.ethLayer = &layers.Ethernet{}
-		pd.ipLayer = &layers.IPv4{}
+		pd.IPv4Layer = &layers.IPv4{}
+		pd.IPv6Layer = &layers.IPv6{}
 		pd.udpLayer = &layers.UDP{}
 		pd.tcpLayer = &layers.TCP{}
 		pd.dns = &layers.DNS{}
@@ -71,7 +73,8 @@ func (pd *packetData) Parse() error {
 		parser := gopacket.NewDecodingLayerParser(
 			layers.LayerTypeEthernet,
 			pd.ethLayer,
-			pd.ipLayer,
+			pd.IPv4Layer,
+			pd.IPv6Layer,
 			pd.udpLayer,
 			pd.tcpLayer,
 			pd.dns,
@@ -88,15 +91,21 @@ func (pd *packetData) Parse() error {
 }
 
 func (pd *packetData) GetSrcIP() net.IP {
-	if pd.ipLayer != nil {
-		return pd.ipLayer.SrcIP
+	if pd.IPv4Layer != nil {
+		return pd.IPv4Layer.SrcIP
+	}
+	if pd.IPv6Layer != nil {
+		return pd.IPv6Layer.SrcIP
 	}
 	return net.IP(pd.tcpdata.IPLayer.Src().Raw())
 }
 
 func (pd *packetData) GetDstIP() net.IP {
-	if pd.ipLayer != nil {
-		return pd.ipLayer.DstIP
+	if pd.IPv4Layer != nil {
+		return pd.IPv4Layer.DstIP
+	}
+	if pd.IPv6Layer != nil {
+		return pd.IPv6Layer.DstIP
 	}
 	return net.IP(pd.tcpdata.IPLayer.Dst().Raw())
 }
@@ -109,8 +118,12 @@ func (pd *packetData) GetTCPLayer() *layers.TCP {
 	return pd.tcpLayer
 }
 
-func (pd *packetData) GetIPLayer() *layers.IPv4 {
-	return pd.ipLayer
+func (pd *packetData) GetIPv4Layer() *layers.IPv4 {
+	return pd.IPv4Layer
+}
+
+func (pd *packetData) GetIPv6Layer() *layers.IPv6 {
+	return pd.IPv6Layer
 }
 
 func (pd *packetData) GetDNSLayer() *layers.DNS {
@@ -121,8 +134,12 @@ func (pd *packetData) HasTCPLayer() bool {
 	return foundLayerType(layers.LayerTypeTCP, pd.foundLayerTypes)
 }
 
-func (pd *packetData) HasIPLayer() bool {
+func (pd *packetData) HasIPv4Layer() bool {
 	return foundLayerType(layers.LayerTypeIPv4, pd.foundLayerTypes)
+}
+
+func (pd *packetData) HasIPv6Layer() bool {
+	return foundLayerType(layers.LayerTypeIPv6, pd.foundLayerTypes)
 }
 
 func (pd *packetData) HasDNSLayer() bool {

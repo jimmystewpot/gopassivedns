@@ -372,10 +372,19 @@ func handlePacket(
 					packetTime,
 					stats)
 			} else if packet.HasTCPLayer() {
-				assembler.AssembleWithTimestamp(
-					packet.GetIPLayer().NetworkFlow(),
-					packet.GetTCPLayer(), *packet.GetTimestamp())
-				continue
+				if srcIP.To16() != nil {
+					assembler.AssembleWithTimestamp(
+						packet.GetIPv4Layer().NetworkFlow(),
+						packet.GetTCPLayer(), *packet.GetTimestamp())
+					continue
+				}
+				if srcIP.To4() != nil {
+					assembler.AssembleWithTimestamp(
+						packet.GetIPv6Layer().NetworkFlow(),
+						packet.GetTCPLayer(), *packet.GetTimestamp())
+					continue
+				}
+
 			} else if packet.HasDNSLayer() {
 				// these are reversed because they are over the wire.
 				srcPort := strconv.Itoa(int(packet.udpLayer.DstPort))
