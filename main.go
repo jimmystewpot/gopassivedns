@@ -161,6 +161,8 @@ func initLogEntry(
 			Length:     *length,
 			Proto:      *protocol,
 			Truncated:  reply.TC,
+			ResponseSz: 0,
+			QuestionSz: uint16(len(question.Questions[0].Name)),
 		})
 
 	} else {
@@ -190,6 +192,7 @@ func initLogEntry(
 				Proto:               *protocol,
 				Truncated:           reply.TC,
 				ResponseSz:          reply.Answers[0].DataLength,
+				QuestionSz:          uint16(len(question.Questions[0].Name)),
 			})
 		}
 	}
@@ -271,11 +274,10 @@ func handleDNS(
 			log.Debug("Got 'answer' leg of query ID: " + strconv.Itoa(int(dns.ID)))
 			initLogEntry(syslogPriority, srcIP, srcPort, dstIP, length, protocol, item.entry, *dns, item.inserted, &logs)
 		} else {
-			fmt.Println("NO QR")
 			if stats != nil {
 				stats.Incr("log_no_qr", 1)
 			}
-			//we just got the question, so we should already have the reply
+			//we just got the question, so we should already have the reply. This is most commonly seen with DNS packets over TCP
 			log.Debug("Got the 'question' leg of query ID " + strconv.Itoa(int(dns.ID)))
 			initLogEntry(syslogPriority, srcIP, srcPort, dstIP, length, protocol, *dns, item.entry, item.inserted, &logs)
 		}
