@@ -113,7 +113,7 @@ func (d *dnsStream) run() {
 func initLogEntry(
 	syslogPriority string,
 	srcIP net.IP,
-	srcPort string,
+	srcPort uint16,
 	dstIP net.IP,
 	length *int,
 	protocol *string,
@@ -234,8 +234,8 @@ func handleDNS(
 	logC chan DNSLogEntry,
 	syslogPriority string,
 	srcIP net.IP,
-	srcPort string,
-	dstPort string,
+	srcPort uint16,
+	dstPort uint16,
 	dstIP net.IP,
 	length *int,
 	protocol *string,
@@ -252,10 +252,10 @@ func handleDNS(
 	logs := []DNSLogEntry{}
 	// generate a more unique key for a conntable map to avoid hash key collisions as dns.ID is not very unique
 	var uid string
-	if dstPort == "53" {
-		uid = fmt.Sprintf("%s->%s:%s", strconv.Itoa(int(dns.ID)), srcPort, dstPort)
+	if dstPort == 53 {
+		uid = fmt.Sprintf("%s->%d:%d", strconv.Itoa(int(dns.ID)), srcPort, dstPort)
 	} else {
-		uid = fmt.Sprintf("%s->%s:%s", strconv.Itoa(int(dns.ID)), dstPort, srcPort)
+		uid = fmt.Sprintf("%s->%d:%d", strconv.Itoa(int(dns.ID)), dstPort, srcPort)
 	}
 
 	conntable.RLock()
@@ -355,9 +355,8 @@ func handlePacket(
 			// parse as DNS, nor will the connection closing.
 
 			if packet.IsTCPStream() {
-				//TODO Make them real
-				srcPort := "0"
-				dstPort := "0"
+				srcPort := packet.GetSrcPort()
+				dstPort := packet.GetDstPort()
 
 				handleDNS(conntable,
 					packet.GetDNSLayer(),
@@ -388,8 +387,8 @@ func handlePacket(
 
 			} else if packet.HasDNSLayer() {
 				// these are reversed because they are over the wire.
-				srcPort := strconv.Itoa(int(packet.udpLayer.DstPort))
-				dstPort := strconv.Itoa(int(packet.udpLayer.SrcPort))
+				srcPort := packet.GetSrcPort()
+				dstPort := packet.GetDstPort()
 				handleDNS(conntable,
 					packet.GetDNSLayer(),
 					logChan,

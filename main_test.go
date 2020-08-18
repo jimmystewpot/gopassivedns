@@ -83,7 +83,7 @@ func LogMirrorBg(source chan DNSLogEntry, target chan DNSLogEntry) {
 
 func BenchmarkALogEntry(b *testing.B) {
 	var srcIP net.IP = net.ParseIP("1.1.1.1")
-	var srcPort string = "53100"
+	var srcPort uint16 = 53100
 	var dstIP net.IP = net.ParseIP("2.2.2.2")
 	var syslogPriority string = "DEBUG"
 	var logProtocol string = "TCP"
@@ -101,7 +101,7 @@ func BenchmarkALogEntry(b *testing.B) {
 
 func BenchmarkLogMarshal(b *testing.B) {
 	var srcIP net.IP = net.ParseIP("1.1.1.1")
-	var srcPort string = "53100"
+	var srcPort uint16 = 53100
 	var dstIP net.IP = net.ParseIP("2.2.2.2")
 	var syslogPriority string = "DEBUG"
 	var logProtocol string = "TCP"

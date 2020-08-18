@@ -18,7 +18,7 @@ type logEntry struct {
 	Client              string `msgpack:"src"`
 	Timestamp           string `msgpack:"tstamp"`
 	Elapsed             int64  `msgpack:"elapsed"`
-	ClientPort          string `msgpack:"sport"`
+	ClientPort          uint16 `msgpack:"sport"`
 	Level               string `msgpack:"level,omitempty"` // syslog level omitted if empty
 	Length              int    `msgpack:"bytes"`
 	Proto               string `msgpack:"protocol"`

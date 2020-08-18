@@ -92,7 +92,7 @@ type DNSLogEntry struct {
 	Client              net.IP `json:"src"`
 	Timestamp           string `json:"tstamp"`
 	Elapsed             int64  `json:"elapsed"`
-	ClientPort          string `json:"sport"`
+	ClientPort          uint16 `json:"sport"`
 	Level               string `json:"level"` // syslog level
 	Length              int    `json:"bytes"`
 	Proto               string `json:"protocol"`
