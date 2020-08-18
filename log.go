@@ -94,12 +94,14 @@ type DNSLogEntry struct {
 	Elapsed             int64  `json:"elapsed"`
 	ClientPort          uint16 `json:"sport"`
 	Level               string `json:"level"` // syslog level
-	Length              int    `json:"bytes"`
+	Length              int    `json:"bytes"` // kept for legacy reasons
 	Proto               string `json:"protocol"`
 	Truncated           bool   `json:"truncated"`
 	AuthoritativeAnswer bool   `json:"aa"`
 	RecursionDesired    bool   `json:"rd"`
 	RecursionAvailable  bool   `json:"ra"`
+	ResponseSz          uint16 `json:"response_size"` // response size
+	QuestionSz          uint16 `json:"question_size"` // question size
 
 	encoded []byte //to hold the marshaled data structure
 	err     error  //encoding errors

@@ -101,9 +101,7 @@ func (d *dnsStream) run() {
 		} else if err != nil {
 			log.Debug("Error when reading DNS buf: ", err)
 		} else if count > 0 {
-
 			data = append(data, tmp...)
-
 		}
 	}
 }
@@ -191,6 +189,7 @@ func initLogEntry(
 				Length:              *length,
 				Proto:               *protocol,
 				Truncated:           reply.TC,
+				ResponseSz:          reply.Answers[0].DataLength,
 			})
 		}
 	}
@@ -231,7 +230,7 @@ func cleanDNSCache(
 func handleDNS(
 	conntable *connectionTable,
 	dns *layers.DNS,
-	logC chan DNSLogEntry,
+	logChan chan DNSLogEntry,
 	syslogPriority string,
 	srcIP net.IP,
 	srcPort uint16,
@@ -264,13 +263,18 @@ func handleDNS(
 	//this is a Query Response packet and we saw the question go out...
 	//if we saw a leg of this already...
 	if foundItem {
-		//do I need this?
-		logs = nil
 		//if we just got the reply
 		if dns.QR {
+			if stats != nil {
+				stats.Incr("log_qr", 1)
+			}
 			log.Debug("Got 'answer' leg of query ID: " + strconv.Itoa(int(dns.ID)))
 			initLogEntry(syslogPriority, srcIP, srcPort, dstIP, length, protocol, item.entry, *dns, item.inserted, &logs)
 		} else {
+			fmt.Println("NO QR")
+			if stats != nil {
+				stats.Incr("log_no_qr", 1)
+			}
 			//we just got the question, so we should already have the reply
 			log.Debug("Got the 'question' leg of query ID " + strconv.Itoa(int(dns.ID)))
 			initLogEntry(syslogPriority, srcIP, srcPort, dstIP, length, protocol, *dns, item.entry, item.inserted, &logs)
@@ -282,7 +286,7 @@ func handleDNS(
 		//TODO: send the array itself, not the elements of the array
 		//to reduce the number of channel transactions
 		for _, logEntry := range logs {
-			logC <- logEntry
+			logChan <- logEntry
 		}
 
 	} else {
@@ -337,6 +341,8 @@ func handlePacket(
 
 			srcIP := packet.GetSrcIP()
 			dstIP := packet.GetDstIP()
+			srcPort := packet.GetSrcPort()
+			dstPort := packet.GetDstPort()
 
 			var packetTime time.Time
 
@@ -355,9 +361,6 @@ func handlePacket(
 			// parse as DNS, nor will the connection closing.
 
 			if packet.IsTCPStream() {
-				srcPort := packet.GetSrcPort()
-				dstPort := packet.GetDstPort()
-
 				handleDNS(conntable,
 					packet.GetDNSLayer(),
 					logChan,
@@ -386,9 +389,6 @@ func handlePacket(
 				}
 
 			} else if packet.HasDNSLayer() {
-				// these are reversed because they are over the wire.
-				srcPort := packet.GetSrcPort()
-				dstPort := packet.GetDstPort()
 				handleDNS(conntable,
 					packet.GetDNSLayer(),
 					logChan,

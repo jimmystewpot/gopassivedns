@@ -100,13 +100,6 @@ func (pd *packetData) GetSrcIP() net.IP {
 	return net.IP(pd.tcpdata.IPLayer.Src().Raw())
 }
 
-func (pd *packetData) GetSrcPort() uint16 {
-	if !pd.IsTCPStream() {
-		return uint16(pd.udpLayer.SrcPort)
-	}
-	return uint16(pd.tcpLayer.SrcPort)
-}
-
 func (pd *packetData) GetDstIP() net.IP {
 	if pd.HasIPv4Layer() {
 		return pd.IPv4Layer.DstIP
@@ -117,11 +110,24 @@ func (pd *packetData) GetDstIP() net.IP {
 	return net.IP(pd.tcpdata.IPLayer.Dst().Raw())
 }
 
+func (pd *packetData) GetSrcPort() uint16 {
+	if pd.udpLayer != nil {
+		return uint16(pd.udpLayer.SrcPort)
+	}
+	if pd.tcpLayer != nil {
+		return uint16(pd.tcpLayer.SrcPort)
+	}
+	return uint16(0)
+}
+
 func (pd *packetData) GetDstPort() uint16 {
-	if !pd.IsTCPStream() {
+	if pd.udpLayer != nil {
 		return uint16(pd.udpLayer.DstPort)
 	}
-	return uint16(pd.tcpLayer.DstPort)
+	if pd.tcpLayer != nil {
+		return uint16(pd.tcpLayer.DstPort)
+	}
+	return uint16(0)
 }
 
 func (pd *packetData) IsTCPStream() bool {
