@@ -1,31 +1,32 @@
 package main
 
 import (
+	"github.com/google/gopacket/layers"
 	"github.com/vmihailenco/msgpack"
 )
 
 // logEntry is the same as dnsLog without some fields which are not required
 // for fluentd outputs.
 type logEntry struct {
-	QueryID             uint16 `msgpack:"query_id"`
-	ResponseCode        int    `msgpack:"rcode"`
-	Question            string `msgpack:"q"`
-	QuestionType        string `msgpack:"qtype"`
-	Answer              string `msgpack:"a"`
-	AnswerType          string `msgpack:"atype"`
-	TTL                 uint32 `msgpack:"ttl"`
-	Server              string `msgpack:"dst"`
-	Client              string `msgpack:"src"`
-	Timestamp           string `msgpack:"tstamp"`
-	Elapsed             int64  `msgpack:"elapsed"`
-	ClientPort          uint16 `msgpack:"sport"`
-	Level               string `msgpack:"level,omitempty"` // syslog level omitted if empty
-	Length              int    `msgpack:"bytes"`
-	Proto               string `msgpack:"protocol"`
-	Truncated           bool   `msgpack:"truncated"`
-	AuthoritativeAnswer bool   `msgpack:"aa"`
-	RecursionDesired    bool   `msgpack:"rd"`
-	RecursionAvailable  bool   `msgpack:"ra"`
+	QueryID             uint16                 `msgpack:"query_id"`
+	ResponseCode        layers.DNSResponseCode `msgpack:"rcode"`
+	Question            string                 `msgpack:"q"`
+	QuestionType        string                 `msgpack:"qtype"`
+	Answer              string                 `msgpack:"a"`
+	AnswerType          string                 `msgpack:"atype"`
+	TTL                 uint32                 `msgpack:"ttl"`
+	Server              string                 `msgpack:"dst"`
+	Client              string                 `msgpack:"src"`
+	Timestamp           string                 `msgpack:"tstamp"`
+	Elapsed             int64                  `msgpack:"elapsed"`
+	ClientPort          uint16                 `msgpack:"sport"`
+	Level               string                 `msgpack:"level,omitempty"` // syslog level omitted if empty
+	Length              int                    `msgpack:"bytes"`
+	Proto               string                 `msgpack:"protocol"`
+	Truncated           bool                   `msgpack:"truncated"`
+	AuthoritativeAnswer bool                   `msgpack:"aa"`
+	RecursionDesired    bool                   `msgpack:"rd"`
+	RecursionAvailable  bool                   `msgpack:"ra"`
 }
 
 // MarshalMsgpack returns the binary messagepack encoded log entry.

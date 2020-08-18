@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/gopacket/layers"
 	"github.com/pquerna/ffjson/ffjson"
 	"github.com/quipo/statsd"
 	log "github.com/sirupsen/logrus"
@@ -81,27 +82,27 @@ func (lo *logOptions) LogToFluentd() bool {
 // DNSLogEntry is the JSON mapping of field names to the struct for logging output.
 // codebeat:disable[TOO_MANY_IVARS]
 type DNSLogEntry struct {
-	QueryID             uint16 `json:"query_id"`
-	ResponseCode        int    `json:"rcode"`
-	Question            string `json:"q"`
-	QuestionType        string `json:"qtype"`
-	Answer              string `json:"a"`
-	AnswerType          string `json:"atype"`
-	TTL                 uint32 `json:"ttl"`
-	Server              net.IP `json:"dst"`
-	Client              net.IP `json:"src"`
-	Timestamp           string `json:"tstamp"`
-	Elapsed             int64  `json:"elapsed"`
-	ClientPort          uint16 `json:"sport"`
-	Level               string `json:"level"` // syslog level
-	Length              int    `json:"bytes"` // kept for legacy reasons
-	Proto               string `json:"protocol"`
-	Truncated           bool   `json:"truncated"`
-	AuthoritativeAnswer bool   `json:"aa"`
-	RecursionDesired    bool   `json:"rd"`
-	RecursionAvailable  bool   `json:"ra"`
-	ResponseSz          uint16 `json:"response_size"` // response size
-	QuestionSz          uint16 `json:"question_size"` // question size
+	QueryID             uint16                 `json:"query_id"`
+	ResponseCode        layers.DNSResponseCode `json:"rcode"`
+	Question            string                 `json:"q"`
+	QuestionType        string                 `json:"qtype"`
+	Answer              string                 `json:"a"`
+	AnswerType          string                 `json:"atype"`
+	TTL                 uint32                 `json:"ttl"`
+	Server              net.IP                 `json:"dst"`
+	Client              net.IP                 `json:"src"`
+	Timestamp           string                 `json:"tstamp"`
+	Elapsed             int64                  `json:"elapsed"`
+	ClientPort          uint16                 `json:"sport"`
+	Level               string                 `json:"level"` // syslog level
+	Length              int                    `json:"bytes"` // kept for legacy reasons
+	Proto               string                 `json:"protocol"`
+	Truncated           bool                   `json:"truncated"`
+	AuthoritativeAnswer bool                   `json:"aa"`
+	RecursionDesired    bool                   `json:"rd"`
+	RecursionAvailable  bool                   `json:"ra"`
+	ResponseSz          uint16                 `json:"response_size"` // response size
+	QuestionSz          uint16                 `json:"question_size"` // question size
 
 	encoded []byte //to hold the marshaled data structure
 	err     error  //encoding errors

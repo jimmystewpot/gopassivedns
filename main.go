@@ -142,7 +142,7 @@ func initLogEntry(
 			Level:               syslogPriority,
 			QueryID:             reply.ID,
 			Question:            string(question.Questions[0].Name),
-			ResponseCode:        int(reply.ResponseCode),
+			ResponseCode:        reply.ResponseCode,
 			QuestionType:        TypeString(question.Questions[0].Type),
 			Answer:              reply.ResponseCode.String(),
 			AnswerType:          "",
@@ -171,7 +171,7 @@ func initLogEntry(
 			*logs = append(*logs, DNSLogEntry{
 				QueryID:      reply.ID,
 				Question:     string(question.Questions[0].Name),
-				ResponseCode: int(reply.ResponseCode),
+				ResponseCode: reply.ResponseCode,
 				QuestionType: TypeString(question.Questions[0].Type),
 				Answer:       RRString(answer),
 				AnswerType:   TypeString(answer.Type),
@@ -179,8 +179,7 @@ func initLogEntry(
 				//this is the answer packet, which comes from the server...
 				Server: srcIP,
 				//...and goes to the client
-				Client: dstIP,
-				//Timestamp:            time.Now().UTC().Format(time.RFC3339Nano),
+				Client:              dstIP,
 				Timestamp:           time.Now().UTC().String(),
 				Elapsed:             time.Now().Sub(inserted).Nanoseconds(),
 				ClientPort:          srcPort,
@@ -191,8 +190,8 @@ func initLogEntry(
 				Length:              *length,
 				Proto:               *protocol,
 				Truncated:           reply.TC,
-				ResponseSz:          reply.Answers[0].DataLength,
-				QuestionSz:          uint16(len(question.Questions[0].Name)),
+				ResponseSz:          answer.DataLength,
+				QuestionSz:          uint16(len(question.Questions[0].Name)), // this captures the size of the question name to see name server requet padding in the <payload>.domain.com data exfiltration model.
 			})
 		}
 	}
