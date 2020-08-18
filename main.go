@@ -372,18 +372,20 @@ func handlePacket(
 					packetTime,
 					stats)
 			} else if packet.HasTCPLayer() {
+				// because most ipv6 packets are dual stack we need to look at the src ip address to identify if its an IPv6 lookup
+				// ot ipv4. If we simply look at the layers dual stack includes both.
 				if srcIP.To4() != nil {
+					assembler.AssembleWithTimestamp(
+						packet.GetIPv4Layer().NetworkFlow(),
+						packet.GetTCPLayer(), *packet.GetTimestamp())
+					continue
+				} else {
 					assembler.AssembleWithTimestamp(
 						packet.GetIPv6Layer().NetworkFlow(),
 						packet.GetTCPLayer(), *packet.GetTimestamp())
 					continue
 				}
-				if srcIP.To16() != nil {
-					assembler.AssembleWithTimestamp(
-						packet.GetIPv4Layer().NetworkFlow(),
-						packet.GetTCPLayer(), *packet.GetTimestamp())
-					continue
-				}
+
 			} else if packet.HasDNSLayer() {
 				// these are reversed because they are over the wire.
 				srcPort := strconv.Itoa(int(packet.udpLayer.DstPort))

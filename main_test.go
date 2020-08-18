@@ -1123,6 +1123,25 @@ func TestParseMultipleUDPPackets(t *testing.T) {
 
 }
 
+func TestDoCaptureIPv6TCP(t *testing.T) {
+
+	handle := getHandle("ipv6_tcp")
+	var logChan = make(chan DNSLogEntry, 400)
+	var reChan = make(chan TCPDataStruct, 1000)
+	var logStash = make(chan DNSLogEntry, 400)
+	var done = make(chan bool, 1)
+
+	go LogMirrorBg(logChan, logStash)
+
+	doCapture(handle, logChan, &pdnsConfig{gcAge: "-1m", gcInterval: "3m", numprocs: 8, statsdInterval: 3}, reChan, stats, done)
+
+	logs := ToSlice(logStash)
+	if len(logs) != 0 {
+		t.Errorf("expected 0 got %d", len(logs))
+	}
+	//fmt.Println(len(logs))
+}
+
 /*
 doCapture(handle *pcap.Handle, logChan chan DNSLogEntry,
 	gcAge string, gcInterval string, numprocs int) {
