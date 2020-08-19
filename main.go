@@ -516,7 +516,7 @@ CAPTURE:
 				//downed.  Or something else crazy has gone wrong...so we break
 				//out of the capture loop entirely.
 
-				log.Printf("packetSource returned nil.")
+				log.Debug("packetSource returned nil")
 				break CAPTURE
 			}
 		case <-scheduled.C:
