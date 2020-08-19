@@ -13,8 +13,8 @@ import (
 
 	"github.com/google/gopacket/layers"
 	"github.com/pquerna/ffjson/ffjson"
-	"github.com/quipo/statsd"
 	log "github.com/sirupsen/logrus"
+	"github.com/smira/go-statsd"
 	"github.com/vmihailenco/msgpack"
 	lumberjack "gopkg.in/natefinch/lumberjack.v2"
 )
@@ -143,7 +143,7 @@ func initLogging(opts *logOptions, config *pdnsConfig) chan DNSLogEntry {
 
 }
 
-func watchLogStats(stats *statsd.StatsdBuffer, logC chan DNSLogEntry, logs []chan DNSLogEntry) {
+func watchLogStats(stats *statsd.Client, logC chan DNSLogEntry, logs []chan DNSLogEntry) {
 	for {
 		stats.Gauge("incoming_log_depth", int64(len(logC)))
 		for i, logChan := range logs {
@@ -155,7 +155,7 @@ func watchLogStats(stats *statsd.StatsdBuffer, logC chan DNSLogEntry, logs []cha
 }
 
 //Spin up required logging threads and then round-robin log messages to log sinks
-func logConn(logC chan DNSLogEntry, opts *logOptions, stats *statsd.StatsdBuffer) {
+func logConn(logC chan DNSLogEntry, opts *logOptions, stats *statsd.Client) {
 
 	//holds the channels for the outgoing log channels
 	var logs []chan DNSLogEntry

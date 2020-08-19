@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log/syslog"
 	"net"
 	"os"
@@ -12,10 +13,10 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
-	"github.com/quipo/statsd"
+	"github.com/smira/go-statsd"
 )
 
-var stats *statsd.StatsdBuffer = nil
+var stats *statsd.Client = nil
 
 func getPacketData(which string) *gopacket.PacketSource {
 	var pcapFile string = "data/" + which + ".pcap"
@@ -187,25 +188,25 @@ func BenchmarkHandleUDPPackets(b *testing.B) {
 	}()
 
 	b.ResetTimer()
+	packetSource := getPacketData("100_udp_lookups")
+	packetSource.DecodeOptions.Lazy = true
+	packetSource.DecodeOptions.NoCopy = true
+
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
-		//print(".")
-		var packetChan = make(chan *packetData, 101)
-		packetSource := getPacketData("100_udp_lookups")
-		packetSource.DecodeOptions.Lazy = true
+		packetChan := make(chan *packetData, 101)
 		for packet := range packetSource.Packets() {
 			packetChan <- newPacketData(packet)
 		}
 		close(packetChan)
 
-		//print(".")
 		b.StartTimer()
 		var conntable = connectionTable{
 			connections: make(map[string]DNSMapEntry),
 		}
 		handlePacket(&conntable, packetChan, logChan, syslogPriority, gcInterval, gcAge, 1, stats)
 	}
-
+	close(logChan)
 }
 
 func TestDefaultConfig(t *testing.T) {
@@ -1133,7 +1134,7 @@ func TestDoCaptureIPv6TCP(t *testing.T) {
 
 	go LogMirrorBg(logChan, logStash)
 
-	doCapture(handle, logChan, &pdnsConfig{gcAge: "-1m", gcInterval: "3m", numprocs: 8, statsdInterval: 3}, reChan, stats, done)
+	doCapture(handle, &pdnsConfig{gcAge: "-1m", gcInterval: "3m", numprocs: 8, statsdInterval: 3}, logChan, reChan, stats, done)
 
 	logs := ToSlice(logStash)
 	if len(logs) != 0 {
@@ -1157,7 +1158,7 @@ func TestDoCaptureUDP(t *testing.T) {
 
 	go LogMirrorBg(logChan, logStash)
 
-	doCapture(handle, logChan, &pdnsConfig{gcAge: "-1m", gcInterval: "3m", numprocs: 8, statsdInterval: 3}, reChan, stats, done)
+	doCapture(handle, &pdnsConfig{gcAge: "-1m", gcInterval: "3m", numprocs: 8, statsdInterval: 3}, logChan, reChan, stats, done)
 
 	logs := ToSlice(logStash)
 
@@ -1177,7 +1178,7 @@ func TestDoCaptureTCP(t *testing.T) {
 
 	go LogMirrorBg(logChan, logStash)
 
-	doCapture(handle, logChan, &pdnsConfig{gcAge: "-1m", gcInterval: "3m", numprocs: 8, statsdInterval: 3}, reChan, stats, done)
+	doCapture(handle, &pdnsConfig{gcAge: "-1m", gcInterval: "3m", numprocs: 8, statsdInterval: 3}, logChan, reChan, stats, done)
 
 	logs := ToSlice(logStash)
 
@@ -1230,11 +1231,12 @@ func TestConntableGC(t *testing.T) {
 	var syslogPriority string = "DEBUG"
 	var packetChan = make(chan *packetData)
 	var logChan = make(chan DNSLogEntry)
+	var finished = make(chan bool)
 
 	var conntable = connectionTable{
 		connections: make(map[string]DNSMapEntry),
 	}
-	go cleanDNSCache(&conntable, gcAge, gcInterval, stats)
+	go cleanDNSCache(&conntable, gcAge, gcInterval, stats, finished)
 	go handlePacket(&conntable, packetChan, logChan, syslogPriority, gcInterval, gcAge, 1, stats)
 
 	packetSource := getPacketData("mx")
@@ -1410,8 +1412,13 @@ func TestMain(m *testing.M) {
 	flag.Parse()
 
 	if *statsdHost != "" {
-		statsdclient := statsd.NewStatsdClient(*statsdHost, *statsdPrefix)
-		stats = statsd.NewStatsdBuffer(time.Duration(*statsdInterval)*time.Second, statsdclient)
+		stats = statsd.NewClient(
+			*statsdHost,
+			statsd.TagStyle(statsd.TagFormatDatadog),
+			statsd.MetricPrefix(fmt.Sprintf("%s.%s.", *statsdPrefix, "gopassivedns")),
+			statsd.FlushInterval(time.Duration(*statsdInterval)*time.Second),
+			statsd.BufPoolCapacity(packetQueue),
+		)
 	}
 
 	os.Exit(m.Run())

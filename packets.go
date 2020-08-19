@@ -32,22 +32,22 @@ type packetData struct {
 // codebeat:enable[TOO_MANY_IVARS]
 
 func newTCPData(tcpdata TCPDataStruct) *packetData {
-	var pd packetData
-	pd.datatype = "tcp"
-	pd.tcpdata = tcpdata
-	return &pd
+	return &packetData{
+		datatype: "tcp",
+		tcpdata:  tcpdata,
+	}
 }
 
 func newPacketData(packet gopacket.Packet) *packetData {
-	var pd packetData
-	pd.datatype = "packet"
-	pd.packet = packet
-	return &pd
+	return &packetData{
+		datatype: "packet",
+		packet:   packet,
+	}
 }
 
 func (pd *packetData) Parse() error {
-
-	if pd.datatype == "tcp" {
+	switch pd.datatype {
+	case "tcp":
 		pd.dns = &layers.DNS{}
 		pd.payload = &gopacket.Payload{}
 		//for parsing the reassembled TCP streams
@@ -60,7 +60,7 @@ func (pd *packetData) Parse() error {
 		dnsParser.DecodeLayers(pd.tcpdata.DNSData, &pd.foundLayerTypes)
 
 		return nil
-	} else if pd.datatype == "packet" {
+	case "packet":
 		pd.ethLayer = &layers.Ethernet{}
 		pd.IPv4Layer = &layers.IPv4{}
 		pd.IPv6Layer = &layers.IPv6{}
@@ -84,8 +84,7 @@ func (pd *packetData) Parse() error {
 		parser.DecodeLayers(pd.packet.Data(), &pd.foundLayerTypes)
 
 		return nil
-
-	} else {
+	default:
 		return errors.New("Bad packet type: " + pd.datatype)
 	}
 }
