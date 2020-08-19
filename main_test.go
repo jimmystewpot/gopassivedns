@@ -189,8 +189,8 @@ func BenchmarkHandleUDPPackets(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
-		//print(".")
-		var packetChan = make(chan *packetData, 101)
+
+		packetChan := make(chan *packetData, 101)
 		packetSource := getPacketData("100_udp_lookups")
 		packetSource.DecodeOptions.Lazy = true
 		for packet := range packetSource.Packets() {
@@ -198,14 +198,13 @@ func BenchmarkHandleUDPPackets(b *testing.B) {
 		}
 		close(packetChan)
 
-		//print(".")
 		b.StartTimer()
 		var conntable = connectionTable{
 			connections: make(map[string]DNSMapEntry),
 		}
 		handlePacket(&conntable, packetChan, logChan, syslogPriority, gcInterval, gcAge, 1, stats)
 	}
-
+	close(logChan)
 }
 
 func TestDefaultConfig(t *testing.T) {
@@ -1133,7 +1132,7 @@ func TestDoCaptureIPv6TCP(t *testing.T) {
 
 	go LogMirrorBg(logChan, logStash)
 
-	doCapture(handle, logChan, &pdnsConfig{gcAge: "-1m", gcInterval: "3m", numprocs: 8, statsdInterval: 3}, reChan, stats, done)
+	doCapture(handle, &pdnsConfig{gcAge: "-1m", gcInterval: "3m", numprocs: 8, statsdInterval: 3}, logChan, reChan, stats, done)
 
 	logs := ToSlice(logStash)
 	if len(logs) != 0 {
@@ -1157,7 +1156,7 @@ func TestDoCaptureUDP(t *testing.T) {
 
 	go LogMirrorBg(logChan, logStash)
 
-	doCapture(handle, logChan, &pdnsConfig{gcAge: "-1m", gcInterval: "3m", numprocs: 8, statsdInterval: 3}, reChan, stats, done)
+	doCapture(handle, &pdnsConfig{gcAge: "-1m", gcInterval: "3m", numprocs: 8, statsdInterval: 3}, logChan, reChan, stats, done)
 
 	logs := ToSlice(logStash)
 
@@ -1177,7 +1176,7 @@ func TestDoCaptureTCP(t *testing.T) {
 
 	go LogMirrorBg(logChan, logStash)
 
-	doCapture(handle, logChan, &pdnsConfig{gcAge: "-1m", gcInterval: "3m", numprocs: 8, statsdInterval: 3}, reChan, stats, done)
+	doCapture(handle, &pdnsConfig{gcAge: "-1m", gcInterval: "3m", numprocs: 8, statsdInterval: 3}, logChan, reChan, stats, done)
 
 	logs := ToSlice(logStash)
 
@@ -1230,11 +1229,12 @@ func TestConntableGC(t *testing.T) {
 	var syslogPriority string = "DEBUG"
 	var packetChan = make(chan *packetData)
 	var logChan = make(chan DNSLogEntry)
+	var finished = make(chan bool)
 
 	var conntable = connectionTable{
 		connections: make(map[string]DNSMapEntry),
 	}
-	go cleanDNSCache(&conntable, gcAge, gcInterval, stats)
+	go cleanDNSCache(&conntable, gcAge, gcInterval, stats, finished)
 	go handlePacket(&conntable, packetChan, logChan, syslogPriority, gcInterval, gcAge, 1, stats)
 
 	packetSource := getPacketData("mx")
