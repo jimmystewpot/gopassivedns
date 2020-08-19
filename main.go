@@ -24,8 +24,11 @@ import (
 
 const (
 	//  create constant for the packetQueue as this is used in multiple places.
-	packetQueue int    = 500
-	udpString   string = "udp"
+	packetQueue  int    = 500
+	zeroInt      int    = 0
+	udpString    string = "udp"
+	tcpString    string = "tcp"
+	packetString string = "packet"
 )
 
 var (
@@ -127,8 +130,8 @@ func initLogEntry(syslogPriority string, srcIP net.IP, srcPort uint16, dstIP net
 	   TODO: Also loop through Additional records in addition to Answers
 	*/
 
-	if *protocol == "packet" {
-		*protocol = "udp"
+	if *protocol == packetString {
+		*protocol = udpString
 	}
 
 	// a response code other than 0 means failure of some kind
@@ -291,6 +294,10 @@ func handlePacket(conntable *connectionTable, packets chan *packetData, logChan 
 	assembler := tcpassembly.NewAssembler(streamPool)
 	ticker := time.Tick(time.Minute)
 
+	// do the string conversion once for each goroutine reduces the allocations for each for loop.
+	packetWallTimeStatName := strconv.Itoa(threadNum) + ".packet_wall_time"
+	dnsLookupsStatName := strconv.Itoa(threadNum) + ".dns_lookups"
+
 	for {
 		select {
 		case packet, more := <-packets:
@@ -319,7 +326,7 @@ func handlePacket(conntable *connectionTable, packets chan *packetData, logChan 
 			} else {
 				log.Debug("Adding wall time not packet time to message.")
 				if stats != nil {
-					stats.Incr(strconv.Itoa(threadNum)+".packet_wall_time", 1)
+					stats.Incr(packetWallTimeStatName, 1)
 				}
 				packetTime = time.Now()
 			}
@@ -370,7 +377,7 @@ func handlePacket(conntable *connectionTable, packets chan *packetData, logChan 
 					packetTime,
 					stats)
 				if stats != nil {
-					stats.Incr(strconv.Itoa(threadNum)+".dns_lookups", 1)
+					stats.Incr(dnsLookupsStatName, 1)
 				}
 			} else {
 				//UDP and doesn't parse as DNS?

@@ -33,21 +33,21 @@ type packetData struct {
 
 func newTCPData(tcpdata TCPDataStruct) *packetData {
 	return &packetData{
-		datatype: "tcp",
+		datatype: tcpString,
 		tcpdata:  tcpdata,
 	}
 }
 
 func newPacketData(packet gopacket.Packet) *packetData {
 	return &packetData{
-		datatype: "packet",
+		datatype: packetString,
 		packet:   packet,
 	}
 }
 
 func (pd *packetData) Parse() error {
 	switch pd.datatype {
-	case "tcp":
+	case tcpString:
 		pd.dns = &layers.DNS{}
 		pd.payload = &gopacket.Payload{}
 		//for parsing the reassembled TCP streams
@@ -60,7 +60,7 @@ func (pd *packetData) Parse() error {
 		dnsParser.DecodeLayers(pd.tcpdata.DNSData, &pd.foundLayerTypes)
 
 		return nil
-	case "packet":
+	case packetString:
 		pd.ethLayer = &layers.Ethernet{}
 		pd.IPv4Layer = &layers.IPv4{}
 		pd.IPv6Layer = &layers.IPv6{}
@@ -130,7 +130,7 @@ func (pd *packetData) GetDstPort() uint16 {
 }
 
 func (pd *packetData) IsTCPStream() bool {
-	return pd.datatype == "tcp"
+	return pd.datatype == tcpString
 }
 
 func (pd *packetData) GetTCPLayer() *layers.TCP {
@@ -166,7 +166,7 @@ func (pd *packetData) HasDNSLayer() bool {
 }
 
 func (pd *packetData) GetTimestamp() *time.Time {
-	if pd.datatype == "packet" {
+	if pd.datatype == packetString {
 		return &pd.packet.Metadata().Timestamp
 	}
 	return nil
@@ -174,13 +174,13 @@ func (pd *packetData) GetTimestamp() *time.Time {
 }
 
 func (pd *packetData) GetSize() *int {
-	if pd.datatype == "packet" {
+	if pd.datatype == packetString {
 		return &pd.packet.Metadata().Length
 	}
 	// This needs to be improved. Currently because GetSize only works with UDP
 	// that is because we can't measure the size of the entire re-assembled stream
 	// of TCP right now. Fix pending.
-	sz := int(0)
+	sz := zeroInt
 	return &sz
 }
 
