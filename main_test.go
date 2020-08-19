@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log/syslog"
 	"net"
 	"os"
@@ -12,10 +13,10 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
-	"github.com/quipo/statsd"
+	"github.com/smira/go-statsd"
 )
 
-var stats *statsd.StatsdBuffer = nil
+var stats *statsd.Client = nil
 
 func getPacketData(which string) *gopacket.PacketSource {
 	var pcapFile string = "data/" + which + ".pcap"
@@ -187,12 +188,13 @@ func BenchmarkHandleUDPPackets(b *testing.B) {
 	}()
 
 	b.ResetTimer()
+	packetSource := getPacketData("100_udp_lookups")
+	packetSource.DecodeOptions.Lazy = true
+	packetSource.DecodeOptions.NoCopy = true
+
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
-
 		packetChan := make(chan *packetData, 101)
-		packetSource := getPacketData("100_udp_lookups")
-		packetSource.DecodeOptions.Lazy = true
 		for packet := range packetSource.Packets() {
 			packetChan <- newPacketData(packet)
 		}
@@ -1410,8 +1412,13 @@ func TestMain(m *testing.M) {
 	flag.Parse()
 
 	if *statsdHost != "" {
-		statsdclient := statsd.NewStatsdClient(*statsdHost, *statsdPrefix)
-		stats = statsd.NewStatsdBuffer(time.Duration(*statsdInterval)*time.Second, statsdclient)
+		stats = statsd.NewClient(
+			*statsdHost,
+			statsd.TagStyle(statsd.TagFormatDatadog),
+			statsd.MetricPrefix(fmt.Sprintf("%s.%s.", *statsdPrefix, "gopassivedns")),
+			statsd.FlushInterval(time.Duration(*statsdInterval)*time.Second),
+			statsd.BufPoolCapacity(packetQueue),
+		)
 	}
 
 	os.Exit(m.Run())

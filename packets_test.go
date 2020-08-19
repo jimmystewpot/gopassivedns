@@ -17,10 +17,12 @@ func BenchmarkPacketParse(b *testing.B) {
 		&IPv4Layer,
 		&IPv6Layer,
 	)
+	packetSource := getPacketData("100_udp_lookups")
+	packetSource.DecodeOptions.Lazy = true
+	packetSource.DecodeOptions.NoCopy = true
 
 	for i := 0; i < b.N; i++ {
-		packetSource := getPacketData("100_udp_lookups")
-		packetSource.DecodeOptions.Lazy = true
+
 		foundLayerTypes := []gopacket.LayerType{}
 		for packet := range packetSource.Packets() {
 			parser.DecodeLayers(packet.Data(), &foundLayerTypes)
