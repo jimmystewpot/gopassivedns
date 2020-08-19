@@ -31,7 +31,7 @@ var (
 	// global channel to recieve reassembled TCP streams
 	// consumed in doCapture. THis is global because the interface in gopacket
 	// doesn't initiate or have an
-	reassembledChan chan TCPDataStruct
+	reassemblerChan chan TCPDataStruct
 )
 
 // DNSMapEntry for DNS connection table entry
@@ -97,7 +97,7 @@ func (d *dnsStream) run() {
 			if len(data) < DNSdatalen+2 {
 				return
 			}
-			reassembledChan <- TCPDataStruct{
+			reassemblerChan <- TCPDataStruct{
 				DNSData: data[2 : DNSdatalen+2],
 				IPLayer: d.net,
 				Length:  int(binary.BigEndian.Uint16(data[:2])),
@@ -218,6 +218,7 @@ func cleanDNSCache(conntable *connectionTable, maxAge time.Duration, interval ti
 			conntable.RUnlock()
 		case <-finished:
 			log.Printf("gopassivedns: cleanDNSCache cleanly exiting %s", time.Now().String())
+			return
 		}
 	}
 }
@@ -436,6 +437,9 @@ func doCapture(handle *pcap.Handle, config *pdnsConfig, logChan chan DNSLogEntry
 		log.Fatal("Your gc_age parameter was not parseable.  Use a string like '3m'")
 	}
 
+	//setup the global channel for reassembled TCP streams
+	reassemblerChan = reassembledChan
+
 	/* init channels for the packet handlers and kick off handler threads */
 	var channels []chan *packetData
 	for i := 0; i < config.numprocs; i++ {
@@ -512,7 +516,7 @@ CAPTURE:
 				//downed.  Or something else crazy has gone wrong...so we break
 				//out of the capture loop entirely.
 
-				log.Debug("packetSource returned nil.")
+				log.Printf("packetSource returned nil.")
 				break CAPTURE
 			}
 		case <-scheduled.C:
@@ -583,7 +587,8 @@ func main() {
 
 	logChan := initLogging(logOpts, config)
 
-	reassembledChan = make(chan TCPDataStruct)
+	// setup the global reassembledChannel for tcp stream reassembly.
+	reassembledChan := make(chan TCPDataStruct)
 
 	sigs := make(chan os.Signal, 1)
 	done := make(chan bool, 1)
