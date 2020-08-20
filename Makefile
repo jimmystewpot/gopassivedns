@@ -26,22 +26,14 @@ build: get-golang
 		-e GOPATH=/build \
 		-e PATH=$(PATH) \
 		-t ${DOCKER_IMAGE} \
-		make build-all
+		make build-targets
 
-build-all: apt test gopassivedns
+build-targets: apt test gopassivedns
 
 apt:
 	@echo ""
 	@echo "***** installing libpcap-dev from apt *****"
 	apt update && apt -y install libpcap-dev
-
-test:
-	@echo ""
-	@echo "***** running gopassivedns tests *****"
-	GOOS=linux GOARCH=amd64 \
-	go test -a -v ./cmd/$(TOOL)
-	@echo ""
-
 
 gopassivedns:
 	@echo ""
@@ -55,14 +47,21 @@ install:
 	install -g 0 -o 0 -m 0755 -D $(BINPATH)/$(TOOL) /opt/$(TOOL)/$(TOOL)
 
 #
-# Benchmarking Targets
+# Testing and Benchmarking Targets
 #
+test: benchmark
+	@echo ""
+	@echo "***** running gopassivedns tests *****"
+	GOOS=linux GOARCH=amd64 \
+	go test -a -v ./cmd/$(TOOL)
+	@echo ""
+
 benchmark:
 	@echo ""
 	@echo "***** running gopassivedns benchmarks *****"
-	go test -bench=. -benchmem
+	go test -bench=. -benchmem  ./cmd/$(TOOL)
 
 benchmark-with-profile:
 	@echo ""
 	@echo "***** running gopassivedns benchmarks with profiling *****"
-	go test -bench=. -benchmem -memprofile profilemem.out -cpuprofile profilecpu.out
+	go test -bench=. -benchmem -memprofile profilemem.out -cpuprofile profilecpu.out  ./cmd/$(TOOL)
