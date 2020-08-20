@@ -15,9 +15,6 @@ import (
 // in this thread...
 func TypeString(dnsType layers.DNSType) string {
 	switch dnsType {
-	default:
-		//take a blind stab...at least this shouldn't *lose* data
-		return strconv.Itoa(int(dnsType))
 	case layers.DNSTypeA:
 		return "A"
 	case layers.DNSTypeAAAA:
@@ -38,6 +35,9 @@ func TypeString(dnsType layers.DNSType) string {
 		return "SRV"
 	case 255: //ANY query per http://tools.ietf.org/html/rfc1035#page-12
 		return "ANY"
+	default:
+		//take a blind stab...at least this shouldn't *lose* data
+		return strconv.Itoa(int(dnsType))
 	}
 }
 
@@ -49,9 +49,6 @@ func TypeString(dnsType layers.DNSType) string {
 // in this thread...
 func RRString(rr layers.DNSResourceRecord) string {
 	switch rr.Type {
-	default:
-		//take a blind stab...at least this shouldn't *lose* data
-		return string(rr.Data)
 	case layers.DNSTypeA:
 		return rr.IP.String()
 	case layers.DNSTypeAAAA:
@@ -73,6 +70,9 @@ func RRString(rr layers.DNSResourceRecord) string {
 	case layers.DNSTypeSRV:
 		//TODO: rebuild the full SRV string
 		return string(rr.SRV.Name)
+	default:
+		//take a blind stab...at least this shouldn't *lose* data
+		return string(rr.Data)
 	}
 }
 
