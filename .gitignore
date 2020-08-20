@@ -23,3 +23,10 @@ _testmain.go
 *.exe
 *.test
 *.prof
+
+vendor
+profilecpu.out
+profilemem.out
+profile.out
+
+bin/
