@@ -25,7 +25,8 @@ _testmain.go
 *.prof
 
 vendor
-gopassivedns
 profilecpu.out
 profilemem.out
 profile.out
+
+bin/
