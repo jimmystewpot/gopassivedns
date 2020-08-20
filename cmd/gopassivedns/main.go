@@ -134,6 +134,11 @@ func initLogEntry(syslogPriority string, srcIP net.IP, srcPort uint16, dstIP net
 		*protocol = udpString
 	}
 
+	var additionals bool
+	if len(answer.Additionals) != 0 {
+		additionals = true
+	}
+
 	// a response code other than 0 means failure of some kind
 	if answer.ResponseCode != 0 {
 		*logs = append(*logs, DNSLogEntry{
@@ -158,10 +163,12 @@ func initLogEntry(syslogPriority string, srcIP net.IP, srcPort uint16, dstIP net
 			Truncated:           answer.TC,
 			ResponseSz:          0,
 			QuestionSz:          uint16(len(question.Questions[0].Name)),
+			Additionals:         additionals,
 		})
 
 	} else {
 		for _, ans := range answer.Answers {
+
 			*logs = append(*logs, DNSLogEntry{
 				QueryID:             answer.ID,
 				Question:            string(question.Questions[0].Name),
@@ -184,6 +191,7 @@ func initLogEntry(syslogPriority string, srcIP net.IP, srcPort uint16, dstIP net
 				Truncated:           answer.TC,                               // this is in the header, not the answer slice
 				ResponseSz:          ans.DataLength,                          // each answer has its own size
 				QuestionSz:          uint16(len(question.Questions[0].Name)), // this captures the size of the question name to see name server requet padding in the <payload>.domain.com data exfiltration model.
+				Additionals:         additionals,
 			})
 		}
 	}

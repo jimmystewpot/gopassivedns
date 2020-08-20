@@ -29,7 +29,7 @@ type logEntry struct {
 	RecursionAvailable  bool                   `msgpack:"ra"`
 	ResponseSz          uint16                 `msgpack:"response_size"` // response size
 	QuestionSz          uint16                 `msgpack:"question_size"` // question size
-
+	Additionals         bool                   `msgpack:"additionals"`
 }
 
 // MarshalMsgpack returns the binary messagepack encoded log entry.
@@ -56,6 +56,7 @@ func (dle *DNSLogEntry) MarshalMsgpack() ([]byte, error) {
 		RecursionAvailable:  dle.RecursionAvailable,
 		ResponseSz:          dle.ResponseSz,
 		QuestionSz:          dle.QuestionSz,
+		Additionals:         dle.Additionals,
 	})
 }
 

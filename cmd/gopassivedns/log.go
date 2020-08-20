@@ -103,9 +103,9 @@ type DNSLogEntry struct {
 	RecursionAvailable  bool                   `json:"ra"`
 	ResponseSz          uint16                 `json:"response_size"` // response size
 	QuestionSz          uint16                 `json:"question_size"` // question size
-
-	encoded []byte //to hold the marshaled data structure
-	err     error  //encoding errors
+	Additionals         bool                   `json:"additionals"`
+	encoded             []byte                 //to hold the marshaled data structure
+	err                 error                  //encoding errors
 }
 
 // codebeat:enable[TOO_MANY_IVARS]
