@@ -15,7 +15,7 @@ import (
 	"github.com/pquerna/ffjson/ffjson"
 	log "github.com/sirupsen/logrus"
 	"github.com/smira/go-statsd"
-	"github.com/vmihailenco/msgpack"
+	"github.com/vmihailenco/msgpack/v5"
 	lumberjack "gopkg.in/natefinch/lumberjack.v2"
 )
 
@@ -110,7 +110,7 @@ type DNSLogEntry struct {
 
 // codebeat:enable[TOO_MANY_IVARS]
 
-//private, idempotent function that ensures the json is encoded
+// private, idempotent function that ensures the json is encoded
 func (dle *DNSLogEntry) ensureEncoded() {
 	if dle.encoded == nil && dle.err == nil {
 		dle.encoded, dle.err = ffjson.Marshal(dle)
@@ -154,7 +154,7 @@ func watchLogStats(stats *statsd.Client, logC chan DNSLogEntry, logs []chan DNSL
 	}
 }
 
-//Spin up required logging threads and then round-robin log messages to log sinks
+// Spin up required logging threads and then round-robin log messages to log sinks
 func logConn(logC chan DNSLogEntry, opts *logOptions, stats *statsd.Client) {
 
 	//holds the channels for the outgoing log channels
@@ -214,7 +214,7 @@ func logConn(logC chan DNSLogEntry, opts *logOptions, stats *statsd.Client) {
 	return
 }
 
-//logs to stdout
+// logs to stdout
 func logConnStdout(logC chan DNSLogEntry) {
 	for message := range logC {
 		encoded, _ := message.Encode()
@@ -222,7 +222,7 @@ func logConnStdout(logC chan DNSLogEntry) {
 	}
 }
 
-//logs to a file
+// logs to a file
 func logConnFile(logC chan DNSLogEntry, opts *logOptions) {
 
 	logger := &lumberjack.Logger{
@@ -242,7 +242,7 @@ func logConnFile(logC chan DNSLogEntry, opts *logOptions) {
 
 }
 
-//logs to kafka
+// logs to kafka
 func logConnKafka(logC chan DNSLogEntry, opts *logOptions) {
 	for message := range logC {
 		encoded, _ := message.Encode()
@@ -251,7 +251,7 @@ func logConnKafka(logC chan DNSLogEntry, opts *logOptions) {
 	}
 }
 
-//logs to syslog
+// logs to syslog
 func logConnSyslog(logC chan DNSLogEntry, opts *logOptions) {
 
 	level, err := levelToType(opts.SyslogPriority)
@@ -274,7 +274,7 @@ func logConnSyslog(logC chan DNSLogEntry, opts *logOptions) {
 	}
 }
 
-//logs to fluentd via a unix socket
+// logs to fluentd via a unix socket
 func logConnFluentd(logC chan DNSLogEntry, opts *logOptions) {
 	Tag := opts.SensorName + ".service"
 	tag, _ := msgpack.Marshal(Tag)

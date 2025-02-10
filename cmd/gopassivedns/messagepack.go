@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/google/gopacket/layers"
-	"github.com/vmihailenco/msgpack"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 // logEntry is the same as dnsLog without some fields which are not required
